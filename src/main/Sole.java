@@ -1,11 +1,12 @@
 package main;
 
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.math.BigInteger;
 public class Sole {
 	public final static int reg = 0, head_mask = 1, end_mask = 2;
-	public static int b = 128;
+	public static int b = 6;
 	public final static BigInteger n = (BigInteger.valueOf(2).pow(b/2)).add(BigInteger.valueOf(1/2));
 	public final static BigInteger blockSize = BigInteger.valueOf(2).pow(b);
 	public static BigInteger local[] = new BigInteger[4];
@@ -13,10 +14,24 @@ public class Sole {
 	public static FileInputStream in = null;
 	public static BigInteger index = BigInteger.ZERO;
 	public static String bin,buffer;
-	public static void main(String args[]) throws IOException, InterruptedException
+	public static void test()
 	{
-        try {
-            in = new FileInputStream("nyu.png");
+		local[0] = new BigInteger("8");
+		local[1] = new BigInteger("57");
+		
+		xypi = compOut(head_mask);
+		printxypi(true, head_mask);
+		
+		local[2] = new BigInteger("17");
+		local[3] = new BigInteger("33");
+		
+		xypi = compOut(reg);
+		printxypi(true, reg);
+		
+	}
+	public static void core() throws IOException, InterruptedException{
+		try {
+            in = new FileInputStream("pic.jpg");
             bin = get3Plus("");
         	while(bin.length() > 3 * b) {
         		buffer = bin.substring(0, 2 * b);
@@ -24,7 +39,7 @@ public class Sole {
         		bin = get3Plus(bin.substring(2 * b));
         	}
         	//will handle the EOF here
-        	handleEOF(bin);
+        	//handleEOF2(bin);
         	
         	//System.out.println(bin);
         	//Thread.sleep(10);		
@@ -35,13 +50,16 @@ public class Sole {
             }
         }
 	}
-	public static String handleEOF(String bin)
+	public static void main(String args[]) throws IOException, InterruptedException, InterruptedException
 	{
-		// b < bin's length <= 3b
+		test();
+		//core();
+	}
+	public static void handleEOF2(String bin)
+	{
 		if(bin.length() <= 2 * b)
 		{
-			local[0] = local[2];
-			local[1] = local[3];
+			forward();
 			local[2] = B;
 			local[3] = new BigInteger(bin.substring(0, b), 2);
 			
@@ -49,8 +67,7 @@ public class Sole {
 
 			printxypi(true, reg);
 			
-			local[0] = local[2];
-			local[1] = local[3];
+			forward();
 			local[2] = new BigInteger(bin.substring(b), 2);
 			local[3] = BigInteger.ZERO;
 			
@@ -60,27 +77,24 @@ public class Sole {
 		}
 		else// 2b < bin's length <= 3b
 		{
-			local[0] = local[2];
-			local[1] = local[3];
-			local[2] = new BigInteger(bin.substring(0, b), 2);
-			local[3] = B;
+			System.out.println("case2: ");
+			forward();
+			local[2] = B;
+			local[3] = new BigInteger(bin.substring(b, 2 * b), 2);
 			
 			xypi = compOut(reg);
 
 			printxypi(true, reg);
 			
-			local[0] = local[2];
-			local[1] = local[3];
-			local[2] = new BigInteger(bin.substring(b, 2 * b), 2);
-			local[3] = new BigInteger(bin.substring(2 * b), 2);
+			forward();
+			local[2] = new BigInteger(padBinary(bin.substring(2 * b)), 2);
+			local[3] = BigInteger.ZERO;
 			
 			xypi = compOut(reg);
 			
 			printxypi(true, reg);
 		}
-			
-		return null;
-		
+
 	}
 	public static String get3Plus(String more) throws IOException {
 		int c = in.read();
@@ -131,8 +145,7 @@ public class Sole {
 		}
 		else
 		{
-			local[0] = local[2];
-			local[1] = local[3];
+			forward();
 			local[2] = new BigInteger(buffer1,2);
 			local[3] = new BigInteger(buffer2,2);
 			
@@ -141,6 +154,19 @@ public class Sole {
 			printxypi(false, reg);
 
 		}
+	}
+	public static String padBinary(String bits)
+	{
+		while(bits.length() < b)
+		{
+			bits = bits + "0";
+		}
+		return bits;
+	}
+	public static void forward()
+	{
+		local[0] = local[2];
+		local[1] = local[3];
 	}
 	public static String padZeros(String bits)
 	{
@@ -185,8 +211,14 @@ public class Sole {
 		Bpi = blockSize;
 		
 		index = index.add(BigInteger.ONE);
-		//System.out.println(index + ": " + n);
+		overflowAlert();
 		return swap();
+	}
+	public static void overflowAlert()
+	{
+		if(n.compareTo(index.multiply(BigInteger.valueOf(2).add(BigInteger.ONE))) < 0 ){
+			System.out.println(index + ": " + n);
+		}
 	}
 	public static BigInteger[] swap(){
 		z = y.multiply(A).add(x);
