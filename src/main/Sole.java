@@ -13,114 +13,29 @@ public class Sole {
 		BigInteger blockSize = BigInteger.valueOf(2).pow(b);
 		BigInteger local[] = new BigInteger[4];
 		
-//		local[0] = new BigInteger("8");
-//		local[1] = new BigInteger("57");
-//		local[2] = new BigInteger("17");
-//		local[3] = new BigInteger("33");
-		
-		String buffer = "", buffer1, buffer2;
-		
-		
 		FileInputStream in = null;
-        FileOutputStream out = null;
         try {
             in = new FileInputStream("nyu.png");
-            //out = new FileOutputStream("outagain.txt");
-            int c;
-            String bin;
-            int i = 1;
-            int j;
-            c = in.read();
-            while (c != -1) {
-            	bin = Integer.toBinaryString(c);
-            	for(j=0; j < bin.length(); j++)
-            	{
-            		buffer = buffer + bin.charAt(j);
-            		c = in.read();
-            		if(c != -1)//not the end
-            		{
-            			if(buffer.length() == 2 * b){    
-	            			buffer1 = buffer.substring(0, b);
-	            			buffer2 = buffer.substring(b, 2 * b) ;
-	            			if(local[0] == null)
-	            			{
-	            				local[0] = new BigInteger(buffer1,2);
-	            				local[1] = new BigInteger(buffer2,2);
-	            				BigInteger A, B, x, y, Api, Bpi, result;
-	            				A = blockSize.add(BigInteger.valueOf(2));
-	            				B = blockSize.add(BigInteger.valueOf(2));
-	            				x = local[0];
-	            				y = local[1];
-	            				Api = blockSize.add(BigInteger.valueOf(-(i-1)*8));
-	            				Bpi = blockSize.add(BigInteger.valueOf(+(i-0)*8));
-	            				result = swap(A,B,Api,Bpi,x,y)[0];
-	            				System.out.print(result.toString(16));
-	            				System.out.print(" ");
-	            			}
-	            			else if(local[2] == null)
-	            			{
-	            				local[2] = new BigInteger(buffer1,2);
-	            				local[3] = new BigInteger(buffer2,2);
-	            				compOut(blockSize,local,i);
-	            				i ++;
-	            			}
-	            			else
-	            			{
-	            				local[0] = local[2];
-	            				local[1] = local[3];
-	            				local[2] = new BigInteger(buffer1,2);
-	            				local[3] = new BigInteger(buffer2,2);
-	            				compOut(blockSize,local,i);
-	            				i ++;
-	            			}
-	            			buffer = "";
-	            			buffer1 = "";
-	            			buffer2 = "";
-            			}
-            		}
-            		else//end two blocks
-            		{
-            			if(buffer.length() == 2 * b)
-            			{
-            				if(bin.length() - 1 - j > b)
-            				{
-            					buffer1 = buffer.substring(0, b);
-    	            			buffer2 = buffer.substring(b, 2 * b) ;
-            				}
-            			}
-            			buffer = buffer + bin.charAt(j);
-            			buffer1 = buffer.substring(0, b);
-            			buffer2 = buffer.substring(b, 2 * b) ;
-            			if(buffer2 == "")
-            			{
-            				
-            			}
-            			
-            			
-            			
-            			local[0] = local[2];
-        				local[1] = local[3];
-        				
-        				
-        				local[2] = new BigInteger(buffer1,2);
-        				local[3] = new BigInteger(buffer2,2);
-            			
-            		}
-            		//System.out.print(bin.charAt(i));
-            		
-            		Thread.sleep(10);
-            		
-            	}
-                //out.write(c);
-            }
-            
-
-        } finally {
+            int i = 0;
+            String bin, buffer = "";
+            bin = get3Buffers("", in, b);
+        	while(bin.length() > 3 * b) {
+        		buffer = bin.substring(0,64);
+        		if(buffer.length() == 2 * b) {
+        			actualComp(buffer, b, local, blockSize, i);
+        			i++;
+        			buffer = "";
+        			bin = get3Buffers(bin.substring(2 * b + 1), in, b);
+        			System.out.println(2 * b);
+        		}
+        	}
+        	
+        	System.out.println(bin);
+        	//Thread.sleep(10);		
+        }
+        finally {
             if (in != null) {
                 in.close();
-            }
-            if (out != null) {
-                out.close();
             }
         }
 		
@@ -131,6 +46,52 @@ public class Sole {
 		
 		
 		
+	}
+	public static String get3Buffers(String more, FileInputStream in, int b) throws IOException {
+		int c = in.read();
+		while(c != -1) {
+			more = more + Integer.toBinaryString(c);
+			if(more.length() <= 3 * b) {
+				c = in.read();
+			}
+			else {
+				break;
+			}
+		}
+		return more;
+	}
+	public static void actualComp(String buffer,int b, BigInteger[] local, BigInteger blockSize, int i) {
+		String buffer1 = buffer.substring(0, b);
+		String buffer2 = buffer.substring(b, 2 * b) ;
+		if(local[0] == null)
+		{
+			local[0] = new BigInteger(buffer1,2);
+			local[1] = new BigInteger(buffer2,2);
+			BigInteger A, B, x, y, Api, Bpi, result;
+			A = blockSize.add(BigInteger.valueOf(2));
+			B = blockSize.add(BigInteger.valueOf(2));
+			x = local[0];
+			y = local[1];
+			Api = blockSize;
+			Bpi = blockSize.add(BigInteger.valueOf(8));
+			result = swap(A,B,Api,Bpi,x,y)[0];
+			System.out.print(result.toString(16));
+			System.out.print(" ");
+		}
+		else if(local[2] == null)
+		{
+			local[2] = new BigInteger(buffer1,2);
+			local[3] = new BigInteger(buffer2,2);
+			compOut(blockSize,local,i);
+		}
+		else
+		{
+			local[0] = local[2];
+			local[1] = local[3];
+			local[2] = new BigInteger(buffer1,2);
+			local[3] = new BigInteger(buffer2,2);
+			compOut(blockSize,local,i);
+		}
 	}
 	public static void compOut(BigInteger blockSize, BigInteger[] local, int i){
 		BigInteger A, B, x, y, Api, Bpi, nextx, nexty;
