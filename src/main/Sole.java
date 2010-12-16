@@ -5,20 +5,44 @@ import java.io.IOException;
 import java.math.BigInteger;
 
 public class Sole {
-	public final static int reg = 0, head_mask = 1, end_mask = 2;
-	public final static int b = 6;// number of bits in a block
-	public static int mode = 1;// 1 means 3 blocks overhead, 2 means 1 block
-	// overhead
-	public static boolean test = false;
+	
+//	public final static int b = 6;// number of bits in a block
+//	public static int mode = 1;// 1 means 3 blocks overhead, 2 means 1 block overhead
+//	public static boolean enableHex = false, enableFileInput = false;
+//	public static boolean test = true;
+	
+	public final static int b = 6;
+	public static int mode = 2;
 	public static boolean enableHex = false, enableFileInput = false;
+	public static boolean test = false;
+	
+	
+	public final static int reg = 0, head_mask = 1, end_mask = 2;
 	public final static BigInteger n = (BigInteger.valueOf(2).pow(b / 2))
 			.add(BigInteger.valueOf(1 / 2));
 	public final static BigInteger blockSize = BigInteger.valueOf(2).pow(b);
 	public static BigInteger local[] = new BigInteger[4];
 	public static BigInteger A, B, x, y, Api, Bpi, nextx, nexty, z, xypi[];
 	public static FileInputStream in = null;
-	public static BigInteger index = BigInteger.ONE;
+	public static BigInteger index = BigInteger.ONE, decoderIndex = BigInteger.ONE;
 	public static String bin, buffer;
+	public static BigInteger decoderBuffer[] = new BigInteger[4];
+
+	public static void sendResultToDecoder(BigInteger comingBigInt) {
+		decoderBuffer[0] = decoderBuffer[1];
+		decoderBuffer[1] = decoderBuffer[2];
+		decoderBuffer[2] = decoderBuffer[3];
+		decoderBuffer[3] = comingBigInt;
+	}
+	public static void sendResultToDecoder(BigInteger[] comingBigInt){
+		decoderBuffer[0] = decoderBuffer[2];
+		decoderBuffer[1] = decoderBuffer[3];
+		decoderBuffer[2] = comingBigInt[0];
+		decoderBuffer[3] = comingBigInt[1];
+	}
+	public static void decode() {
+
+	}
 
 	public static void bufferComp() {
 		String buffer1 = buffer.substring(0, b);
@@ -29,26 +53,76 @@ public class Sole {
 			local[1] = new BigInteger(buffer2, 2);
 
 			xypi = compOut(head_mask);
-
 			printxypi(true, head_mask);
+			handleCompIn(head_mask);
+
+			
 		} else if (local[2] == null)// compute the 2nd and 3rd output
 		{
 			local[2] = new BigInteger(buffer1, 2);
 			local[3] = new BigInteger(buffer2, 2);
 
 			xypi = compOut(reg);
-
 			printxypi(true, reg);
+			handleCompIn(reg);
+			
+			
 		} else {
 			forward();
 			local[2] = new BigInteger(buffer1, 2);
 			local[3] = new BigInteger(buffer2, 2);
 
 			xypi = compOut(reg);
-
 			printxypi(true, reg);
-
+			handleCompIn(reg);
 		}
+	}
+
+	public static BigInteger[] compIn(int control) {
+		
+		decoderIndex = index.subtract(BigInteger.valueOf(2));
+		// 1 pass
+		A = blockSize;
+		B = blockSize;
+
+		// 1 pass front
+		x = decoderBuffer[0];
+		y = decoderBuffer[1];
+
+		Api = blockSize.add(decoderIndex.multiply(BigInteger.valueOf(4 * mode)));
+		Bpi = blockSize.subtract(decoderIndex.multiply(BigInteger.valueOf(4 * mode)));
+
+		nextx = swap()[1];
+
+		// 1 pass end
+
+		x = decoderBuffer[2];
+		y = decoderBuffer[3];
+
+		Api = blockSize.add(decoderIndex.add(BigInteger.ONE).multiply(
+				BigInteger.valueOf(4 * mode)));
+		Bpi = blockSize.subtract(decoderIndex.add(BigInteger.ONE).multiply(
+				BigInteger.valueOf(4 * mode)));
+
+		nexty = swap()[0];
+
+		// 2 pass
+		Api = blockSize.add(BigInteger.valueOf(mode));
+		Bpi = blockSize.add(BigInteger.valueOf(mode));
+
+		if((control & head_mask) > 0){
+			x = decoderBuffer[0];
+		}
+		else{
+			x = nextx;
+		}
+		y = nexty;
+	
+		A = blockSize.subtract(decoderIndex.multiply(BigInteger.valueOf(4 * mode)));
+		B = blockSize.add(decoderIndex.add(BigInteger.ONE).multiply(
+				BigInteger.valueOf(4 * mode)));
+
+		return swap();
 	}
 
 	public static BigInteger[] compOut(int control) {
@@ -132,6 +206,7 @@ public class Sole {
 			}
 			xypi = compOut(reg);
 			printxypi(true, reg);
+			handleCompIn(reg);
 			// step 2
 			forward();
 			if (mode == 1) {
@@ -143,23 +218,35 @@ public class Sole {
 			}
 			xypi = compOut(reg);
 			printxypi(true, reg);
+			handleCompIn(reg);
 
 		} else// 2b < bin's length <= 3b
 		{
 			// store last two blocks
+			BigInteger l0 = local[0];
+			BigInteger l1 = local[1];
 			BigInteger l2 = local[2];
 			BigInteger l3 = local[3];
 
 			// step 1
+			int head_flag = 1;
 			if (local[2] != null) {
 				forward();
+				head_flag = 0;
+				
 			}
 			if (mode == 1) {
 				local[2] = new BigInteger(padBinaryEnd(bin.substring(0, b)), 2);
 				local[3] = new BigInteger(
 						padBinaryEnd(bin.substring(b, 2 * b)), 2);
 				xypi = compOut(reg);
-				printxypi(true, reg);
+				printxypi(true, reg);				
+				if((head_flag & head_mask) > 0){
+					handleCompIn(head_mask);
+				}
+				else{
+					handleCompIn(reg);
+				}
 			} else if (mode == 2) {
 				local[2] = new BigInteger(padBinaryEnd(bin.substring(0, b)), 2);
 				local[3] = blockSize;
@@ -172,6 +259,7 @@ public class Sole {
 				local[3] = blockSize;
 				xypi = compOut(reg);
 				printxypi(true, reg);
+				handleCompIn(reg);
 			} else if (mode == 2) {
 				local[2] = new BigInteger(
 						padBinaryEnd(bin.substring(b, 2 * b)), 2);
@@ -186,17 +274,26 @@ public class Sole {
 			if (mode == 1) {
 				xypi = compOut(reg);
 				printxypi(true, reg);
+				handleCompIn(reg);
 				return;// the end for mode 1
 			} else if (mode == 2) {
 				// extra step 4
 				if (xypi[1].compareTo(BigInteger.ZERO) > 0) {
-					local[0] = l2;
-					local[1] = l3;
+					if(l2 == null){
+						local[0] = l0;
+						local[1] = l1;
+					}
+					else{
+						local[0] = l2;
+						local[1] = l3;
+					}
 					local[2] = new BigInteger(
 							padBinaryEnd(bin.substring(0, b)), 2);
 					local[3] = blockSize.add(BigInteger.ONE);
+
 					xypi = compOut(reg);
 					printxypi(true, reg);
+					handleCompIn(reg);
 
 					forward();
 					local[2] = new BigInteger(padBinaryEnd(bin.substring(b,
@@ -205,12 +302,26 @@ public class Sole {
 							padBinaryEnd(bin.substring(2 * b)), 2);
 					xypi = compOut(reg);
 					printxypi(true, reg);
-
+					System.out.println("finally");
+					handleCompIn(reg);
+					
+					
 					forward();
 					local[2] = BigInteger.ZERO;
 					local[3] = BigInteger.ZERO;
 					xypi = compOut(reg);
 					printxypi(true, head_mask);
+					
+					if(xypi[1].compareTo(blockSize.add(BigInteger.valueOf(2))) == 0){
+						xypi[1] = BigInteger.ONE;
+					}
+					else{
+						xypi[1] = BigInteger.ZERO;
+					}
+					handleCompIn(reg);
+					
+					
+					//everything is the same until you get here...
 				}
 			}
 		}
@@ -231,10 +342,9 @@ public class Sole {
 
 	public static void main(String args[]) throws IOException,
 			InterruptedException, InterruptedException {
-		if(test){
+		if (test) {
 			test();
-		}
-		else{
+		} else {
 			core();
 		}
 	}
@@ -328,33 +438,62 @@ public class Sole {
 		z = y.multiply(A).add(x);
 		return new BigInteger[] { z.mod(Api), z.divide(Api) };
 	}
-
+	public static void handleCompIn(int control){
+		if((control & head_mask) > 0){
+			sendResultToDecoder(xypi);
+			if(decoderBuffer[0] != null)
+			{
+				xypi = compIn(head_mask);
+				System.out.println("xypi0: " + xypi[0]);
+				System.out.println("xypi1: " + xypi[1]);
+			}
+		}
+		else{
+			sendResultToDecoder(xypi);
+			xypi = compIn(reg);
+			System.out.println("xypi0: " + xypi[0]);
+			System.out.println("xypi1: " + xypi[1]);
+		}
+	}
 	public static void test() {
 		local[0] = new BigInteger("8");
 		local[1] = new BigInteger("57");
 
 		xypi = compOut(head_mask);
 		printxypi(true, head_mask);
-
+		handleCompIn(head_mask);
+		
 		local[2] = new BigInteger("17");
 		local[3] = new BigInteger("33");
 
 		xypi = compOut(reg);
 		printxypi(true, reg);
+		handleCompIn(reg);
 
+		
+		
+		
+		
 		forward();
 		local[2] = new BigInteger("4");
 		local[3] = new BigInteger("64");
 
 		xypi = compOut(reg);
 		printxypi(true, reg);
-
+		handleCompIn(reg);
+		
 		forward();
 		local[2] = new BigInteger("0");
 		local[3] = new BigInteger("0");
 
 		xypi = compOut(reg);
 		printxypi(true, reg);
+		handleCompIn(reg);
+
+		
+		
+
+	
 
 	}
 }
