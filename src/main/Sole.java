@@ -11,9 +11,9 @@ public class Sole {
 //	public static boolean enableHex = false, enableFileInput = false;
 //	public static boolean test = true;
 	
-	public final static int b = 6;
+	public final static int b = 512;
 	public static int mode = 2;
-	public static boolean enableHex = false, enableFileInput = false;
+	public static boolean enableHex = true, enableFileInput = true;
 	public static boolean test = false;
 	
 	
@@ -302,16 +302,13 @@ public class Sole {
 							padBinaryEnd(bin.substring(2 * b)), 2);
 					xypi = compOut(reg);
 					printxypi(true, reg);
-					System.out.println("finally");
 					handleCompIn(reg);
-					
 					
 					forward();
 					local[2] = BigInteger.ZERO;
 					local[3] = BigInteger.ZERO;
 					xypi = compOut(reg);
 					printxypi(true, head_mask);
-					
 					if(xypi[1].compareTo(blockSize.add(BigInteger.valueOf(2))) == 0){
 						xypi[1] = BigInteger.ONE;
 					}
