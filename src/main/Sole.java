@@ -11,7 +11,7 @@ public class Sole {
 //	public static boolean enableHex = false, enableFileInput = false;
 //	public static boolean test = true;
 	
-	public final static int b = 512;
+	public final static int b = 64 + 3;
 	public static int mode = 2;
 	public static boolean enableHex = true, enableFileInput = true;
 	public static boolean test = false;
