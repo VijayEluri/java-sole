@@ -1,64 +1,97 @@
 package main;
 
+import java.io.BufferedWriter;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigInteger;
 
 public class Sole {
+	
+	public static int b = 19;// number of bits in a block
+	public static int mode = 2;// 1 means 3 blocks overhead, 2 means 1 block overhead
+	public static boolean enableHex = false, enableFileInput = false;
+	public static boolean test = false;
+
+	
+	
 	
 //	public final static int b = 6;// number of bits in a block
 //	public static int mode = 2;// 1 means 3 blocks overhead, 2 means 1 block overhead
 //	public static boolean enableHex = false, enableFileInput = false;
 //	public static boolean test = false;
 	
-	public final static int b = 512;
-	public static int mode = 2;
-	public static boolean enableHex = true, enableFileInput = true;
-	public static boolean test = false;
 	
-	public final static boolean printOutput = false;
-	public final static int reg = 0, head_mask = 1, end_mask = 2;
-	public final static BigInteger n = (BigInteger.valueOf(2).pow(b / 2))
+	
+	
+	
+	
+//	public final static int b = 512;
+//	public static int mode = 2;
+//	public static boolean enableHex = true, enableFileInput = true;
+//	public static boolean test = false;
+	
+	
+	
+	
+	
+	public static boolean enableHash = false;
+	
+	public static FileInputStream in;
+	public static FileOutputStream out;
+	public static FileWriter fstream;
+    public static BufferedWriter fout;
+    
+    public static String inputString = "8,57,17,33,4,8,111,2,5,6,8,8,9,10,9,11111";
+    
+	public static boolean printOutput = false, printInput = true;
+	public final static int reg = 0, head_mask = 1, tail_mask = 2, cut_front = 4;
+	public static BigInteger n = (BigInteger.valueOf(2).pow(b / 2))
 			.add(BigInteger.valueOf(1 / 2));
-	public final static BigInteger blockSize = BigInteger.valueOf(2).pow(b);
+	public static BigInteger blockSize = BigInteger.valueOf(2).pow(b);
 	public static BigInteger local[] = new BigInteger[4];
 	public static BigInteger A, B, x, y, Api, Bpi, nextx, nexty, z, xypi[];
-	public static FileInputStream in = null;
+	
 	public static BigInteger index = BigInteger.ONE, decoderIndex = BigInteger.ONE;
 	public static String bin, buffer;
 	public static BigInteger decoderBuffer[] = new BigInteger[4];
 	public static byte[] datablock = new byte[64];
+	
+
+	
 	public static void sendResultToHash(BigInteger comingBigInt, int control) {
-		
-		byte[] tempBytes = comingBigInt.toByteArray();
-		int diff = tempBytes.length - 64;
-		if(diff > 0) {
-			for(int i=0; i<64; i++) {
-				datablock[i] = tempBytes[diff + i];
-			}
-		}
-		else if(diff < 0) {
-			for(int i=0; i<64; i++) {
-				datablock[i] = 0;
-				if(i + diff >= 0) {
-					datablock[i] = tempBytes[i + diff];
+		if(enableHash){
+			byte[] tempBytes = comingBigInt.toByteArray();
+			int diff = tempBytes.length - 64;
+			if(diff > 0) {
+				for(int i=0; i<64; i++) {
+					datablock[i] = tempBytes[diff + i];
 				}
 			}
-		}
-		else {
-			for(int i=0; i<64; i++) {
-				datablock[i] = tempBytes[i];
+			else if(diff < 0) {
+				for(int i=0; i<64; i++) {
+					datablock[i] = 0;
+					if(i + diff >= 0) {
+						datablock[i] = tempBytes[i + diff];
+					}
+				}
 			}
+			else {
+				for(int i=0; i<64; i++) {
+					datablock[i] = tempBytes[i];
+				}
+			}
+			if((control & head_mask) > 0) {
+				Blake32 pass = new Blake32(head_mask, datablock ,null);
+				pass.compress32();
+			}
+			else {
+				Blake32 pass = new Blake32(0, datablock ,null);
+				pass.compress32();
+			}
+			System.out.println(Blake32.getHash());
 		}
-		if((control & head_mask) > 0) {
-			Blake32 pass = new Blake32(head_mask, datablock ,null);
-			pass.compress32();
-		}
-		else {
-			Blake32 pass = new Blake32(0, datablock ,null);
-			pass.compress32();
-		}
-		System.out.println(Blake32.getHash());
 	}
 	public static void sendResultToDecoder(BigInteger comingBigInt) {
 		decoderBuffer[0] = decoderBuffer[1];
@@ -76,7 +109,7 @@ public class Sole {
 
 	}
 
-	public static void bufferComp() {
+	public static void bufferComp() throws IOException {
 		String buffer1 = buffer.substring(0, b);
 		String buffer2 = buffer.substring(b);
 		if (local[0] == null)// compute the first output
@@ -87,6 +120,7 @@ public class Sole {
 			xypi = compOut(head_mask);
 			printxypi(head_mask);
 			handleCompIn(head_mask);
+			
 
 			
 		} else if (local[2] == null)// compute the 2nd and 3rd output
@@ -96,7 +130,7 @@ public class Sole {
 
 			xypi = compOut(reg);
 			printxypi(reg);
-			handleCompIn(reg);
+			handleCompIn(head_mask);			
 			
 			
 		} else {
@@ -223,7 +257,7 @@ public class Sole {
 		return more;
 	}
 
-	public static void handleEOF(String bin) {
+	public static void handleEOF(String bin) throws IOException {
 		
 		if (bin.length() <= 2 * b) {
 			
@@ -253,7 +287,18 @@ public class Sole {
 			}
 			xypi = compOut(reg);
 			printxypi(reg);
-			handleCompIn(reg);
+			handleCompIn(cut_front);
+			
+			//extra step 3 for mode 2
+			if(mode ==2)
+			{
+				forward();
+				local[2] = BigInteger.ZERO;
+				local[3] = BigInteger.ZERO;
+				xypi = compOut(reg);
+				printxypi(reg);
+				handleCompIn(tail_mask);
+			}
 
 		} else// 2b < bin's length <= 3b
 		{
@@ -338,20 +383,20 @@ public class Sole {
 							padBinaryEnd(bin.substring(2 * b)), 2);
 					xypi = compOut(reg);
 					printxypi(reg);
-					handleCompIn(reg);
+					handleCompIn(tail_mask);
 					
 					forward();
 					local[2] = BigInteger.ZERO;
 					local[3] = BigInteger.ZERO;
 					xypi = compOut(reg);
 					printxypi(head_mask);
-					if(xypi[1].compareTo(blockSize.add(BigInteger.valueOf(2))) == 0){
+					if(xypi[1].compareTo(blockSize.add(BigInteger.ONE)) == 0){
 						xypi[1] = BigInteger.ONE;
 					}
 					else{
 						xypi[1] = BigInteger.ZERO;
 					}
-					handleCompIn(reg);					
+					handleCompIn(reg);	
 				}
 			}
 		}
@@ -363,9 +408,15 @@ public class Sole {
 		String binStream = "";
 		int i;
 		for (i = 0; i < numsArr.length; i++) {
-			binStream = binStream
-					+ padBinaryFront(new BigInteger(numsArr[i], radix)
-							.toString(2));
+			BigInteger tempBig = new BigInteger(numsArr[i], radix);
+			if(tempBig.compareTo(blockSize) >= 0)
+			{
+				System.out.println("It hits the EOF.");
+				break;
+			}
+			else {
+				binStream = binStream + padBinaryFront(tempBig.toString(2));
+			}
 		}
 		return binStream;
 	}
@@ -415,18 +466,16 @@ public class Sole {
 	public static void printxypi(int control) {
 		if (printOutput) {
 			if (enableHex) {
-				System.out.print(padHexFront(xypi[0].toString(16)));// hex
+				System.out.println(padHexFront(xypi[0].toString(16)));// hex
 			} else {
-				System.out.print(xypi[0].toString(10));// decimal
+				System.out.println(xypi[0].toString(10));// decimal
 			}
-			System.out.println(" ");
 			if ((head_mask & control) == 0) {
 				if (enableHex) {
-					System.out.print(padHexFront(xypi[1].toString(16)));// hex
+					System.out.println(padHexFront(xypi[1].toString(16)));// hex
 				} else {
-					System.out.print(xypi[1].toString(10));// decimal
+					System.out.println(xypi[1].toString(10));// decimal
 				}
-				System.out.println(" ");
 			}
 		}
 	}
@@ -434,6 +483,14 @@ public class Sole {
 	public static void readFromFile() throws IOException, InterruptedException {
 		try {
 			in = new FileInputStream("nyu.png");
+			out = new FileOutputStream("outagain.txt");
+			
+			fstream = new FileWriter("out.txt");
+		    fout = new BufferedWriter(fstream);
+		    
+		   
+			
+			
 			bin = get3Plus("");
 			while (bin.length() > 3 * b) {
 				buffer = bin.substring(0, 2 * b);
@@ -448,12 +505,13 @@ public class Sole {
 		} finally {
 			if (in != null) {
 				in.close();
+				out.close();
 			}
 		}
 	}
 
-	public static void readInput() {
-		String bin = handleInput("8,57,17,33,4", 10);
+	public static void readInput() throws IOException {
+		String bin = handleInput(inputString, 10);
 		while (bin.length() > 3 * b) {
 			buffer = bin.substring(0, 2 * b);
 			bufferComp();
@@ -467,7 +525,28 @@ public class Sole {
 		z = y.multiply(A).add(x);
 		return new BigInteger[] { z.mod(Api), z.divide(Api) };
 	}
-	public static void handleCompIn(int control){
+	public static void finalOutput(int control) throws IOException{
+		//fout.write(padBinaryFront(xypi[0].toString(2)));
+		
+		if (printInput) {
+			if (enableHex) {
+				if((control & cut_front) == 0) {
+					System.out.println(padHexFront(xypi[0].toString(16)));// hex
+				}
+				if((control & tail_mask) == 0) {
+					System.out.println(padHexFront(xypi[1].toString(16)));// hex
+				}
+			} else {
+				if((control & cut_front) == 0) {
+					System.out.println(xypi[0].toString(10));// decimal
+				}
+				if((control & tail_mask) == 0) {
+					System.out.println(xypi[1].toString(10));// decimal
+				}
+			}
+		}
+	}
+	public static void handleCompIn(int control) throws IOException{
 		if((control & head_mask) > 0){
 			sendResultToDecoder(xypi);
 			if(decoderBuffer[0] != null)
@@ -475,23 +554,28 @@ public class Sole {
 				xypi = compIn(head_mask);
 				sendResultToHash(xypi[0],head_mask);
 				sendResultToHash(xypi[1], reg);
-				//System.out.println("xypi0: " + xypi[0]);
-				//System.out.println("xypi1: " + xypi[1]);
+				finalOutput(reg);
 			}
 		}
 		else{
 			sendResultToDecoder(xypi);
 			sendResultToHash(xypi[0], reg);
-			sendResultToHash(xypi[1], reg);
-			xypi = compIn(reg);
-			//System.out.println("xypi0: " + xypi[0]);
-			//System.out.println("xypi1: " + xypi[1]);
+			if((control & tail_mask) > 0) {
+				xypi = compIn(reg);
+				finalOutput(tail_mask);
+			}
+			else {
+				sendResultToHash(xypi[1], reg);
+				xypi = compIn(reg);
+				finalOutput(control);
+			}
+			
 		}
 	}
-	public static void test() {
+	public static void test() throws IOException {
 		local[0] = new BigInteger("8");
 		local[1] = new BigInteger("57");
-
+		
 		xypi = compOut(head_mask);
 		printxypi(head_mask);
 		handleCompIn(head_mask);
@@ -522,11 +606,5 @@ public class Sole {
 		xypi = compOut(reg);
 		printxypi(reg);
 		handleCompIn(reg);
-
-		
-		
-
-	
-
 	}
 }
