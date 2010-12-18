@@ -1,13 +1,14 @@
 package main;
 
 public class Blake32 {
+	public static int instanceCounter = 0;
 	public int[] v = new int[16];
 	public int [] m = new int[16];
 	public int round;
-	public static int[] h32;
-	public int[] salt32;
-	public char[] datablock;
-	public int[] t32;
+	public static int[] h32 = new int[8];
+	public int[] salt32 = new int[4];
+	public byte[] datablock;
+	public static int[] t32 = new int[2];
 	public final int NB_ROUNDS32 = 10;
 	public final int reg = 0, head_mask = 1;
 	public int IV32[]={
@@ -26,11 +27,17 @@ public class Blake32 {
 	    0xC0AC29B7, 0xC97C50DD,
 	    0x3F84D5B5, 0xB5470917 
 	};
-	Blake32(int control, int[] h, char[] d, int[] s) {
+	public static int getCount() {
+		return instanceCounter;
+	}
+	Blake32(int control, byte[] d, int[] s) {
+		instanceCounter ++;
 		if((control & head_mask) > 0) {
 			for(int i=0;i<8;i++) {
 				h32[i] = IV32[i];
-			}			
+			}
+			t32[0] = 0;
+			t32[1] = 0;
 		}
 		if(s == null){
 			salt32[0] = 0;
@@ -67,9 +74,20 @@ public class Blake32 {
 	  };
 	
 	
+	public static String padHexFront(String bits) {
+		while (bits.length() < 8) {
+			bits = "0" + bits;
+		}
+		return bits;
+	}
 	
-	public int[] getHash(){
-		return h32;
+	public static String getHash(){
+		String hash = "";
+		
+		for(int x:h32) {
+			hash = hash + padHexFront(Integer.toHexString(x));
+		}
+		return hash;
 	}
 	
 	
@@ -81,9 +99,9 @@ public class Blake32 {
 	
 	
 	
-	public char[] getFourChar (int start)
+	public byte[] getFourByte (int start)
 	{
-		char[] fourchar = new char[4];
+		byte[] fourchar = new byte[4];
 		fourchar[0] = datablock[start];
 		fourchar[0] = datablock[start + 1];
 		fourchar[0] = datablock[start + 2];
@@ -94,7 +112,7 @@ public class Blake32 {
 		
 		for(int i = 0; i < 16;i++)
 		{
-			 m[i] = U8TO32_BE(getFourChar(i * 4));
+			 m[i] = U8TO32_BE(getFourByte(i * 4));
 		}
 		
 		/* initialization */
@@ -138,10 +156,14 @@ public class Blake32 {
 		  h32[5] ^= v[ 5]^v[13]^salt32[1];
 		  h32[6] ^= v[ 6]^v[14]^salt32[2];
 		  h32[7] ^= v[ 7]^v[15]^salt32[3];
+		  
+		  t32[0] += 512;
+		  if (t32[0] == 0)
+			  t32[1] ++;
 
 	}
 	public int ROT32(int x, int n) {
-		return ((x) << (32 - n) | ((x) >> (n)));
+		return ((x) << (32 - n) | ((x) >>> (n)));
 	}
 	public int ADD32(int x, int y) {
 		return ((int)((x) + (y)));
@@ -160,7 +182,7 @@ public class Blake32 {
 	     v[b] = ROT32(XOR32(v[b],v[c]), 7);
 	}
 	
-	public int U8TO32_BE(char p[]) {
+	public int U8TO32_BE(byte p[]) {
 	  return
 	  (((int)((p)[0]) << 24) | 
 	   ((int)((p)[1]) << 16) | 
