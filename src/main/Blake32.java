@@ -30,6 +30,7 @@ public class Blake32 {
 	public static int getCount() {
 		return instanceCounter;
 	}
+	
 	Blake32(int control, byte[] d, int[] s) {
 		instanceCounter ++;
 		if((control & head_mask) > 0) {
