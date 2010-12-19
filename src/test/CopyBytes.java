@@ -9,15 +9,16 @@ public class CopyBytes {
         FileInputStream in = null;
         FileOutputStream out = null;
         try {
-            in = new FileInputStream("nyu.png");
-            out = new FileOutputStream("outagain.txt");
+            in = new FileInputStream("pic.jpg");
+            out = new FileOutputStream("pic_2.jpg");
             int c;
-
+            int counter = 0;
             while ((c = in.read()) != -1) {
+            	counter ++;
             	System.out.println(Integer.toBinaryString(c));
                 out.write(c);
             }
-
+            System.out.println(counter);
         } finally {
             if (in != null) {
                 in.close();

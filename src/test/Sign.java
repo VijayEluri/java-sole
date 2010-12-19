@@ -7,8 +7,10 @@ public class Sign {
 //		int a = 1;
 //		int b = -1;
 //		System.out.println(Integer.toBinaryString(b ^ a));
-		BigInteger big = new BigInteger("-1");
-		Byte bt = big.toByteArray()[0];
-		System.out.println(bt);
+//		BigInteger big = new BigInteger("-1");
+//		Byte bt = big.toByteArray()[0];
+//		System.out.println(bt);
+		byte a = 10-('1' - '0');
+		System.out.println(a);
 	}
 }

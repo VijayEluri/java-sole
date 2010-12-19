@@ -1,6 +1,7 @@
 package main;
 
 import java.io.BufferedWriter;
+import java.io.DataOutputStream;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
@@ -9,10 +10,10 @@ import java.math.BigInteger;
 
 public class Sole {
 	
-	public static int b = 19;// number of bits in a block
-	public static int mode = 2;// 1 means 3 blocks overhead, 2 means 1 block overhead
-	public static boolean enableHex = false, enableFileInput = false;
-	public static boolean test = false;
+//	public static int b = 10;// number of bits in a block
+//	public static int mode = 4;// 1 means 3 blocks overhead, 2 means 1 block overhead
+//	public static boolean enableHex = true, enableFileInput = false;
+//	public static boolean test = false;
 
 	
 	
@@ -27,10 +28,10 @@ public class Sole {
 	
 	
 	
-//	public final static int b = 512;
-//	public static int mode = 2;
-//	public static boolean enableHex = true, enableFileInput = true;
-//	public static boolean test = false;
+	public final static int b = 512;
+	public static int mode = 4;
+	public static boolean enableHex = false, enableFileInput = true;
+	public static boolean test = false;
 	
 	
 	
@@ -39,16 +40,21 @@ public class Sole {
 	public static boolean enableHash = false;
 	
 	public static FileInputStream in;
-	public static FileOutputStream out;
+	
+	public static FileOutputStream fos;
+	public static DataOutputStream out;
+	
+	
 	public static FileWriter fstream;
     public static BufferedWriter fout;
     
-    public static String inputString = "8,57,17,33,4,8,111,2,5,6,8,8,9,10,9,11111";
-    
-	public static boolean printOutput = false, printInput = true;
-	public final static int reg = 0, head_mask = 1, tail_mask = 2, cut_front = 4;
+    //public static String inputString = "8,57,17,33,33,1,44,4,8,111,2,5,6,8,8,9,10,9,256,11111";
+    public static String inputString = "8,57,4,8,111,2,5,6,8,9,10,9,256,11111";
+	public static boolean printOutput = false, printInput = false;
+	public final static int reg = 0, head_mask = 1, cut_tail = 2, cut_front = 4, 
+	flip_flag = 8, flip_flag_late = 16, end_flag = 32, odd_flag = 64, even_flag = 128;
 	public static BigInteger n = (BigInteger.valueOf(2).pow(b / 2))
-			.add(BigInteger.valueOf(1 / 2));
+			.add(BigInteger.valueOf(mode / 2));
 	public static BigInteger blockSize = BigInteger.valueOf(2).pow(b);
 	public static BigInteger local[] = new BigInteger[4];
 	public static BigInteger A, B, x, y, Api, Bpi, nextx, nexty, z, xypi[];
@@ -58,7 +64,9 @@ public class Sole {
 	public static BigInteger decoderBuffer[] = new BigInteger[4];
 	public static byte[] datablock = new byte[64];
 	
-
+	public static String outputBuffer = "";
+	public static int counter,counter1,counter3 = 0;
+	
 	
 	public static void sendResultToHash(BigInteger comingBigInt, int control) {
 		if(enableHash){
@@ -243,35 +251,57 @@ public class Sole {
 		local[0] = local[2];
 		local[1] = local[3];
 	}
-
+	
 	public static String get3Plus(String more) throws IOException {
 		int c = in.read();
+		counter1 ++;
 		while (c != -1) {
-			more = more + Integer.toBinaryString(c);
+			more = more + padByteFront(Integer.toBinaryString(c));
 			if (more.length() <= 3 * b) {
 				c = in.read();
+				counter1 ++;
 			} else {
 				break;
 			}
 		}
 		return more;
 	}
-
+	public static String flipBits(String bits) {
+		char[] bitsChars = bits.toCharArray();
+		for(int i = 0; i < bitsChars.length; i++) {
+			if(bitsChars[i] == '0') {
+				bitsChars[i] = '1';
+			}
+			else if(bitsChars[i] == '1'){
+				bitsChars[i] = '0';
+			}
+		}
+		return String.valueOf(bitsChars);
+	}
 	public static void handleEOF(String bin) throws IOException {
-		
+		String lastBlock;
 		if (bin.length() <= 2 * b) {
-			
+			lastBlock = bin.substring(b);
 			// step 1
 			if (local[2] != null) {
 				forward();
 			}
 			if (mode == 1) {
-				local[2] = new BigInteger(padBinaryEnd(bin.substring(0, b)), 2);
-				local[3] = new BigInteger(padBinaryEnd(bin.substring(b)), 2);
-			} else if (mode == 2) {
-				local[2] = blockSize;
-				local[3] = new BigInteger(padBinaryEnd(bin.substring(0, b)), 2);
-			}
+				local[2] = new BigInteger((bin.substring(0, b)), 2);
+				local[3] = new BigInteger((bin.substring(b)), 2);
+			} else if (mode == 2 || mode == 4) {
+				
+					if((lastBlock.charAt(0) == '0') && (mode == 4)) {
+					//flip bits
+					lastBlock = flipBits(lastBlock);
+					local[2] = blockSize.add(BigInteger.valueOf(2));
+				}
+				else
+				{
+					local[2] = blockSize;
+				}				
+				local[3] = new BigInteger((bin.substring(0, b)), 2);
+			} 
 			xypi = compOut(reg);
 			printxypi(reg);
 			handleCompIn(reg);
@@ -280,36 +310,55 @@ public class Sole {
 			if (mode == 1) {
 				local[2] = blockSize;
 				local[3] = blockSize;
-			} else if (mode == 2) {
+			} else if (mode == 2 || mode == 4) {
 				
-				local[2] = new BigInteger(padBinaryEnd(bin.substring(b)), 2);
+				local[2] = new BigInteger(lastBlock, 2);
 				local[3] = BigInteger.ZERO;
 			}
 			xypi = compOut(reg);
 			printxypi(reg);
-			handleCompIn(cut_front);
+			handleCompIn(cut_front);//front is EOF
 			
+			int flippy = 0;
+			if((xypi[0].compareTo(blockSize.add(BigInteger.valueOf(2))) == 0) || 
+					(xypi[0].compareTo(blockSize.add(BigInteger.valueOf(3))) == 0))//front B +2 || B + 3
+				flippy = flip_flag;
 			//extra step 3 for mode 2
-			if(mode ==2)
+			if(mode ==2 || mode == 4)
 			{
 				forward();
 				local[2] = BigInteger.ZERO;
 				local[3] = BigInteger.ZERO;
 				xypi = compOut(reg);
-				printxypi(reg);
-				handleCompIn(tail_mask);
+				//printxypi(reg);//if print just two zeros
+				System.out.println("xxxxxxxxxxxxxxx");
+				handleCompIn(odd_flag | end_flag | cut_tail | flippy);//tail should be zero
 			}
 
-		} else// 2b < bin's length <= 3b
-		{
-			
+		}
+		/* ######################################################################
+		 * 
+		 * 
+		 * 2b < bin's length <= 3b
+		 * 
+		 * ###################################################################### */
+		else {
+			lastBlock = bin.substring(2 * b);
+			System.out.println("last block: " + lastBlock);
+			System.out.println("last block len: " + lastBlock.length());
+			char firstBitLastBlock = lastBlock.charAt(0);
 			// store last two blocks
 			BigInteger l0 = local[0];
 			BigInteger l1 = local[1];
 			BigInteger l2 = local[2];
 			BigInteger l3 = local[3];
+			
+			BigInteger d0 = decoderBuffer[0];
+			BigInteger d1 = decoderBuffer[1];
+			BigInteger d2 = decoderBuffer[2];
+			BigInteger d3 = decoderBuffer[3];
 
-			// step 1
+			// step 1lastBlock
 			int head_flag = 1;
 			if (local[2] != null) {
 				forward();
@@ -317,9 +366,9 @@ public class Sole {
 				
 			}
 			if (mode == 1) {
-				local[2] = new BigInteger(padBinaryEnd(bin.substring(0, b)), 2);
+				local[2] = new BigInteger((bin.substring(0, b)), 2);
 				local[3] = new BigInteger(
-						padBinaryEnd(bin.substring(b, 2 * b)), 2);
+						(bin.substring(b, 2 * b)), 2);
 				xypi = compOut(reg);
 				printxypi(reg);				
 				if((head_flag & head_mask) > 0){
@@ -328,23 +377,26 @@ public class Sole {
 				else{
 					handleCompIn(reg);
 				}
-			} else if (mode == 2) {
-				local[2] = new BigInteger(padBinaryEnd(bin.substring(0, b)), 2);
+			} else if (mode == 2 || mode == 4) {
+				local[2] = new BigInteger((bin.substring(0, b)), 2);
 				local[3] = blockSize;
 			}
 
 			// step 2
 			forward();
 			if (mode == 1) {
-				local[2] = new BigInteger(padBinaryEnd(bin.substring(2 * b)), 2);
+				local[2] = new BigInteger((bin.substring(2 * b)), 2);
 				local[3] = blockSize;
 				xypi = compOut(reg);
 				printxypi(reg);
 				handleCompIn(reg);
-			} else if (mode == 2) {
+			} else if (mode == 2 || mode == 4) {
 				local[2] = new BigInteger(
-						padBinaryEnd(bin.substring(b, 2 * b)), 2);
-				local[3] = new BigInteger(padBinaryEnd(bin.substring(2 * b)), 2);
+						(bin.substring(b, 2 * b)), 2);
+				if((firstBitLastBlock == '0') && (mode == 4)) {
+					lastBlock = flipBits(lastBlock);
+				}
+				local[3] = new BigInteger(lastBlock, 2);
 			}
 
 			// step 3
@@ -357,47 +409,103 @@ public class Sole {
 				printxypi(reg);
 				handleCompIn(reg);
 				return;// the end for mode 1
-			} else if (mode == 2) {
+			} else if (mode == 2 || mode == 4) {
+				xypi = compOut(reg);
+				boolean lastbitOne = (xypi[1].compareTo(BigInteger.ZERO) > 0);
+				index = index.subtract(BigInteger.ONE);
+
 				// extra step 4
-				if (xypi[1].compareTo(BigInteger.ZERO) > 0) {
-					if(l2 == null){
-						local[0] = l0;
-						local[1] = l1;
-					}
-					else{
-						local[0] = l2;
-						local[1] = l3;
-					}
-					local[2] = new BigInteger(
-							padBinaryEnd(bin.substring(0, b)), 2);
-					local[3] = blockSize.add(BigInteger.ONE);
 
-					xypi = compOut(reg);
-					printxypi(reg);
-					handleCompIn(reg);
-
-					forward();
-					local[2] = new BigInteger(padBinaryEnd(bin.substring(b,
-							2 * b)), 2);
-					local[3] = new BigInteger(
-							padBinaryEnd(bin.substring(2 * b)), 2);
-					xypi = compOut(reg);
-					printxypi(reg);
-					handleCompIn(tail_mask);
-					
-					forward();
-					local[2] = BigInteger.ZERO;
-					local[3] = BigInteger.ZERO;
-					xypi = compOut(reg);
-					printxypi(head_mask);
-					if(xypi[1].compareTo(blockSize.add(BigInteger.ONE)) == 0){
-						xypi[1] = BigInteger.ONE;
-					}
-					else{
-						xypi[1] = BigInteger.ZERO;
-					}
-					handleCompIn(reg);	
+				if(l2 == null){
+					local[0] = l0;
+					local[1] = l1;
 				}
+				else{
+					local[0] = l2;
+					local[1] = l3;
+				}
+				
+				
+				
+
+				if(mode == 4) {
+					if((firstBitLastBlock == '0') && lastbitOne) {
+						local[2] = blockSize.add(BigInteger.valueOf(3));
+					}
+					else if((firstBitLastBlock == '0') && (!lastbitOne)) {
+						local[2] = blockSize.add(BigInteger.valueOf(2));
+					}
+					else if((!(firstBitLastBlock == '0')) && (lastbitOne)){
+						local[2] = blockSize.add(BigInteger.ONE);
+					}
+					else {
+						local[2] = blockSize;
+					}
+				}
+				else if(mode == 2) {
+					if(lastbitOne){
+						local[2] = blockSize.add(BigInteger.ONE);
+					}
+					else {
+						local[2] = blockSize.add(BigInteger.ZERO);
+					}
+				}
+				
+				local[3] = new BigInteger(
+						(bin.substring(0, b)), 2);
+
+				xypi = compOut(reg);
+				printxypi(reg);
+				
+				decoderBuffer[0] = d0;
+				decoderBuffer[1] = d1;
+				decoderBuffer[2] = d2;
+				decoderBuffer[3] = d3;
+				
+				handleCompIn(reg);
+				forward();
+				local[2] = new BigInteger((bin.substring(b,
+						2 * b)), 2);
+				local[3] = new BigInteger(
+						lastBlock, 2);
+				xypi = compOut(reg);
+				printxypi(reg);
+				handleCompIn(cut_front);//front is EOF
+				System.out.println("cut front is called: " + cut_front);
+				BigInteger EOF = xypi[0];
+				
+				
+				int flippy = 0;
+				if((xypi[0].compareTo(blockSize.add(BigInteger.valueOf(2))) == 0) || 
+						(xypi[0].compareTo(blockSize.add(BigInteger.valueOf(3))) == 0))//front B +2 || B + 3
+					flippy = flip_flag_late;
+				
+				
+				forward();
+				local[2] = BigInteger.ZERO;
+				local[3] = BigInteger.ZERO;
+				xypi = compOut(reg);
+				printxypi(reg);
+
+			
+				/*
+				 * #####################################################
+				 * 
+				 * 
+				 * EOF selection
+				 * 
+				 * 
+				 * #####################################################
+				 * */
+				if((EOF.compareTo(blockSize.add(BigInteger.ONE)) == 0) ||
+						(EOF.compareTo(blockSize.add(BigInteger.valueOf(3))) == 0)){
+					xypi[1] = BigInteger.ONE;
+				}
+				else{
+					xypi[1] = BigInteger.ZERO;
+				}
+				System.out.println("xxxxxxxxxxxxxx....x");
+				handleCompIn((even_flag| end_flag | flippy));	
 			}
 		}
 	}
@@ -441,7 +549,12 @@ public class Sole {
 			System.out.println(">>> >>> overflow <<< <<<");
 		}
 	}
-
+	public static String padByteFront(String bits) {
+		while (bits.length() < 8) {
+			bits = "0" + bits;
+		}
+		return bits;
+	}
 	public static String padBinaryEnd(String bits) {
 		while (bits.length() < b) {
 			bits = bits + "0";
@@ -482,8 +595,10 @@ public class Sole {
 
 	public static void readFromFile() throws IOException, InterruptedException {
 		try {
-			in = new FileInputStream("nyu.png");
-			out = new FileOutputStream("outagain.txt");
+			in = new FileInputStream("pic.jpg");
+			fos = new FileOutputStream("pic_2.jpg");
+			out = new DataOutputStream(fos);
+			
 			
 			fstream = new FileWriter("out.txt");
 		    fout = new BufferedWriter(fstream);
@@ -494,12 +609,19 @@ public class Sole {
 			bin = get3Plus("");
 			while (bin.length() > 3 * b) {
 				buffer = bin.substring(0, 2 * b);
+				//fout.write(buffer);
+				counter3 = counter3 + buffer.length();
 				bufferComp();
 				bin = get3Plus(bin.substring(2 * b));
 			}
+			
+			//fout.write(bin);
 			// will handle the EOF here
+			counter3 = counter3 + bin.length();
 			handleEOF(bin);
-
+			System.out.println(counter);
+			System.out.println(counter1);
+			System.out.println(counter3);
 			// System.out.println(bin);
 			// Thread.sleep(10);
 		} finally {
@@ -526,25 +648,139 @@ public class Sole {
 		return new BigInteger[] { z.mod(Api), z.divide(Api) };
 	}
 	public static void finalOutput(int control) throws IOException{
-		//fout.write(padBinaryFront(xypi[0].toString(2)));
 		
 		if (printInput) {
 			if (enableHex) {
 				if((control & cut_front) == 0) {
 					System.out.println(padHexFront(xypi[0].toString(16)));// hex
 				}
-				if((control & tail_mask) == 0) {
+				if((control & cut_tail) == 0) {
 					System.out.println(padHexFront(xypi[1].toString(16)));// hex
 				}
 			} else {
 				if((control & cut_front) == 0) {
-					System.out.println(xypi[0].toString(10));// decimal
+					if((control & flip_flag) > 0) {
+						System.out.println(new BigInteger(flipBits(xypi[0].toString(2)),2).toString(10));// decimal
+					}
+					else {
+						System.out.println(xypi[0].toString(10));// decimal
+					}
 				}
-				if((control & tail_mask) == 0) {
-					System.out.println(xypi[1].toString(10));// decimal
+				if((control & cut_tail) == 0) {
+					if((control & flip_flag_late) > 0) {
+						System.out.println(new BigInteger(flipBits(xypi[1].toString(2)),2).toString(10));// decimal
+					}
+					else {
+						System.out.println(xypi[1].toString(10));// decimal
+					}
 				}
 			}
 		}
+		if(enableFileInput){
+			writeBack(control);
+			//System.out.println(control);
+		}
+	}
+	public static void writeBack(int control) throws NumberFormatException, IOException {
+//		if((control & cut_front) > 0)
+//			System.out.println("cut front is heard: " +control);
+		if((control & cut_tail) > 0)
+			System.out.println("cut tail is heard: " +control);
+		String s0 = "",s1 = "";
+		s0 = xypi[0].toString(2);
+		s1 = xypi[1].toString(2);
+		
+		if((control & flip_flag) > 0) {
+			s0 = flipBits(xypi[0].toString(2));
+		}
+		else if((control & flip_flag_late) > 0) {			
+			s1 = flipBits(xypi[1].toString(2));
+		}
+		if(s0.length() < b && (((end_flag & control) == 0)||((even_flag & control) > 0))) {
+			s0 = padBinaryFront(s0);
+		}
+		else {
+			if(s0.length() % 8 != 0){
+				System.out.println("lens0:" + s0.length());
+			}
+		}
+		if(s1.length() < b && (((end_flag & control) == 0))) {
+			s1 = padBinaryFront(s1);
+		}
+		else {
+			if(s1.length() % 8 != 0){
+				System.out.println("lens1:" + s1.length());
+			}
+		}
+		
+//		if((control & cut_tail) > 0) {
+//			//outputBuffer = outputBuffer + s0;
+//			System.out.println("xxxxfsadxxxxxxxxxxx....x");
+//		}else {
+//			outputBuffer = outputBuffer + s0 + s1;
+//			System.out.println("xxxxxxxx34444444444xxxxxx....x");
+//		}
+		if(s0.length() > b) {
+			//System.out.println(xypi[0].toString(16));
+			outputBuffer = outputBuffer + s1;
+		}
+		else if((cut_tail & control) > 0) {
+			outputBuffer = outputBuffer + s0;
+			System.out.println("this is the tail:" +s1 + " l: "+s1.length());
+		}
+		else {
+			outputBuffer = outputBuffer + s0 + s1;
+		}
+		
+		
+//		fout.write(outputBuffer);
+		String byteHolder = "";
+		byte abyte = 0;
+		if((outputBuffer.length() % 8) != 0)
+		{
+			System.out.println("omg!!!");
+			System.out.println("omg!!!");
+			System.out.println("omg!!!");
+			System.out.println("omg!!!");
+			System.out.println("omg!!!");
+			System.out.println("omg!!!");
+		}
+		while(outputBuffer.length() >= 8) {
+			byteHolder = outputBuffer.substring(0, 8);
+			outputBuffer = outputBuffer.substring(8);
+			abyte = buildByte(byteHolder);
+			out.write(abyte);
+			counter++;
+		}
+
+//		for(int i =0;i<outputBuffer.length();i++) {
+//			if(outputBuffer.charAt(i) == '0') {
+//				out.writeBoolean(false);
+//			}
+//			else {
+//				out.writeBoolean(true);
+//			}
+//		}
+//		outputBuffer = "";
+	}
+	public static byte buildByte(String bits) {
+		byte abyte = 0;
+		if(bits.charAt(0) == '1') {
+			for(int i=1;i<8;i++) {
+				if(bits.charAt(i) == '0') {
+					abyte = (byte) (abyte + (1 << (8-1-i)));
+				}
+			}
+			abyte = (byte) (abyte + 1);
+			abyte *= -1;
+		} else if (bits.charAt(0) == '0') {
+			for(int i=1;i<8;i++) {
+				if(bits.charAt(i) == '1') {
+					abyte = (byte) (abyte + (1 << (8-1-i)));
+				}
+			}
+		}
+		return abyte;
 	}
 	public static void handleCompIn(int control) throws IOException{
 		if((control & head_mask) > 0){
@@ -560,9 +796,9 @@ public class Sole {
 		else{
 			sendResultToDecoder(xypi);
 			sendResultToHash(xypi[0], reg);
-			if((control & tail_mask) > 0) {
+			if((control & cut_tail) > 0) {
 				xypi = compIn(reg);
-				finalOutput(tail_mask);
+				finalOutput(control);
 			}
 			else {
 				sendResultToHash(xypi[1], reg);
