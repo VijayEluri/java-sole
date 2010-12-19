@@ -10,10 +10,10 @@ import java.math.BigInteger;
 
 public class Sole {
 	
-//	public static int b = 10;// number of bits in a block
-//	public static int mode = 4;// 1 means 3 blocks overhead, 2 means 1 block overhead
-//	public static boolean enableHex = true, enableFileInput = false;
-//	public static boolean test = false;
+	public static int b = 16;// number of bits in a block
+	public static int mode = 4;// 1 means 3 blocks overhead, 2 means 1 block overhead
+	public static boolean enableHex = true, enableFileInput = false;
+	public static boolean test = false;
 
 	
 	
@@ -28,17 +28,12 @@ public class Sole {
 	
 	
 	
-	public final static int b = 512;
-	public static int mode = 4;
-	public static boolean enableHex = false, enableFileInput = true;
-	public static boolean test = false;
+//	public final static int b = 512;
+//	public static int mode = 4;
+//	public static boolean enableHex = false, enableFileInput = true;
+//	public static boolean test = false;
 	
-	
-	
-	
-	
-	public static boolean enableHash = false;
-	
+	public static boolean enableHash = true;
 	public static FileInputStream in;
 	
 	public static FileOutputStream fos;
@@ -49,7 +44,7 @@ public class Sole {
     public static BufferedWriter fout;
     
     //public static String inputString = "8,57,17,33,33,1,44,4,8,111,2,5,6,8,8,9,10,9,256,11111";
-    public static String inputString = "8,57,4,8,111,2,5,6,8,9,10,9,256,11111";
+    public static String inputString = "8,57,4,8,111,2,5,6,8,9,10,9,256,11111,256,33";
 	public static boolean printOutput = false, printInput = false;
 	public final static int reg = 0, head_mask = 1, cut_tail = 2, cut_front = 4, 
 	flip_flag = 8, flip_flag_late = 16, end_flag = 32, odd_flag = 64, even_flag = 128;
@@ -65,7 +60,13 @@ public class Sole {
 	public static byte[] datablock = new byte[64];
 	
 	public static String outputBuffer = "";
-	public static int counter,counter1,counter3 = 0;
+	public static String filename = "nyu1292735907", format = "png";
+	
+	public static int newStart = 0;
+	public static boolean toBeContinued = false;
+	public static String [] numsArr = null;
+	
+	
 	
 	
 	public static void sendResultToHash(BigInteger comingBigInt, int control) {
@@ -98,7 +99,6 @@ public class Sole {
 				Blake32 pass = new Blake32(0, datablock ,null);
 				pass.compress32();
 			}
-			System.out.println(Blake32.getHash());
 		}
 	}
 	public static void sendResultToDecoder(BigInteger comingBigInt) {
@@ -243,6 +243,10 @@ public class Sole {
 			readFromFile();
 		} else {
 			readInput();
+			if(toBeContinued) {
+				toBeContinued =false;
+				readInput();
+			}
 		}
 
 	}
@@ -254,12 +258,10 @@ public class Sole {
 	
 	public static String get3Plus(String more) throws IOException {
 		int c = in.read();
-		counter1 ++;
 		while (c != -1) {
 			more = more + padByteFront(Integer.toBinaryString(c));
 			if (more.length() <= 3 * b) {
 				c = in.read();
-				counter1 ++;
 			} else {
 				break;
 			}
@@ -331,7 +333,7 @@ public class Sole {
 				local[3] = BigInteger.ZERO;
 				xypi = compOut(reg);
 				//printxypi(reg);//if print just two zeros
-				System.out.println("xxxxxxxxxxxxxxx");
+
 				handleCompIn(odd_flag | end_flag | cut_tail | flippy);//tail should be zero
 			}
 
@@ -344,8 +346,7 @@ public class Sole {
 		 * ###################################################################### */
 		else {
 			lastBlock = bin.substring(2 * b);
-			System.out.println("last block: " + lastBlock);
-			System.out.println("last block len: " + lastBlock.length());
+			
 			char firstBitLastBlock = lastBlock.charAt(0);
 			// store last two blocks
 			BigInteger l0 = local[0];
@@ -471,7 +472,7 @@ public class Sole {
 				xypi = compOut(reg);
 				printxypi(reg);
 				handleCompIn(cut_front);//front is EOF
-				System.out.println("cut front is called: " + cut_front);
+				
 				BigInteger EOF = xypi[0];
 				
 				
@@ -504,22 +505,25 @@ public class Sole {
 				else{
 					xypi[1] = BigInteger.ZERO;
 				}
-				System.out.println("xxxxxxxxxxxxxx....x");
+				
 				handleCompIn((even_flag| end_flag | flippy));	
 			}
 		}
 	}
 
 	public static String handleInput(String nums, int radix) {
-
-		String[] numsArr = nums.split(",");
+		if (numsArr == null) {
+			numsArr = nums.split(",");
+		}
 		String binStream = "";
 		int i;
-		for (i = 0; i < numsArr.length; i++) {
+		for (i = newStart; i < numsArr.length; i++) {
 			BigInteger tempBig = new BigInteger(numsArr[i], radix);
 			if(tempBig.compareTo(blockSize) >= 0)
 			{
 				System.out.println("It hits the EOF.");
+				toBeContinued = true;
+				newStart = i;
 				break;
 			}
 			else {
@@ -536,12 +540,15 @@ public class Sole {
 		} else {
 			core();
 		}
+		if(enableHash) {
+			System.out.println(Blake32.getHash());
+		}
 	}
 
 	public static void overflowAlert() {
 		if (n.compareTo(index.subtract(BigInteger.ONE).multiply(
 				BigInteger.valueOf(2).add(BigInteger.ONE))) < 0) {
-			System.out.println("");
+			
 			System.out.println(">>> >>> overflow <<< <<<");
 			System.out.println(index.subtract(BigInteger.ONE).multiply(
 					BigInteger.valueOf(2).add(BigInteger.ONE))
@@ -595,13 +602,13 @@ public class Sole {
 
 	public static void readFromFile() throws IOException, InterruptedException {
 		try {
-			in = new FileInputStream("pic.jpg");
-			fos = new FileOutputStream("pic_2.jpg");
+			in = new FileInputStream(filename + "." +format);
+			fos = new FileOutputStream(filename + System.currentTimeMillis() / 1000L + "." + format);
 			out = new DataOutputStream(fos);
 			
-			
-			fstream = new FileWriter("out.txt");
-		    fout = new BufferedWriter(fstream);
+			//just for writting text output
+			//fstream = new FileWriter("out.txt");
+		    //fout = new BufferedWriter(fstream);
 		    
 		   
 			
@@ -610,18 +617,14 @@ public class Sole {
 			while (bin.length() > 3 * b) {
 				buffer = bin.substring(0, 2 * b);
 				//fout.write(buffer);
-				counter3 = counter3 + buffer.length();
 				bufferComp();
 				bin = get3Plus(bin.substring(2 * b));
 			}
 			
 			//fout.write(bin);
 			// will handle the EOF here
-			counter3 = counter3 + bin.length();
 			handleEOF(bin);
-			System.out.println(counter);
-			System.out.println(counter1);
-			System.out.println(counter3);
+
 			// System.out.println(bin);
 			// Thread.sleep(10);
 		} finally {
@@ -682,10 +685,6 @@ public class Sole {
 		}
 	}
 	public static void writeBack(int control) throws NumberFormatException, IOException {
-//		if((control & cut_front) > 0)
-//			System.out.println("cut front is heard: " +control);
-		if((control & cut_tail) > 0)
-			System.out.println("cut tail is heard: " +control);
 		String s0 = "",s1 = "";
 		s0 = xypi[0].toString(2);
 		s1 = xypi[1].toString(2);
@@ -699,34 +698,18 @@ public class Sole {
 		if(s0.length() < b && (((end_flag & control) == 0)||((even_flag & control) > 0))) {
 			s0 = padBinaryFront(s0);
 		}
-		else {
-			if(s0.length() % 8 != 0){
-				System.out.println("lens0:" + s0.length());
-			}
-		}
+
 		if(s1.length() < b && (((end_flag & control) == 0))) {
 			s1 = padBinaryFront(s1);
 		}
-		else {
-			if(s1.length() % 8 != 0){
-				System.out.println("lens1:" + s1.length());
-			}
-		}
+
 		
-//		if((control & cut_tail) > 0) {
-//			//outputBuffer = outputBuffer + s0;
-//			System.out.println("xxxxfsadxxxxxxxxxxx....x");
-//		}else {
-//			outputBuffer = outputBuffer + s0 + s1;
-//			System.out.println("xxxxxxxx34444444444xxxxxx....x");
-//		}
 		if(s0.length() > b) {
 			//System.out.println(xypi[0].toString(16));
 			outputBuffer = outputBuffer + s1;
 		}
 		else if((cut_tail & control) > 0) {
 			outputBuffer = outputBuffer + s0;
-			System.out.println("this is the tail:" +s1 + " l: "+s1.length());
 		}
 		else {
 			outputBuffer = outputBuffer + s0 + s1;
@@ -736,22 +719,14 @@ public class Sole {
 //		fout.write(outputBuffer);
 		String byteHolder = "";
 		byte abyte = 0;
-		if((outputBuffer.length() % 8) != 0)
-		{
-			System.out.println("omg!!!");
-			System.out.println("omg!!!");
-			System.out.println("omg!!!");
-			System.out.println("omg!!!");
-			System.out.println("omg!!!");
-			System.out.println("omg!!!");
-		}
+
 		while(outputBuffer.length() >= 8) {
 			byteHolder = outputBuffer.substring(0, 8);
 			outputBuffer = outputBuffer.substring(8);
 			abyte = buildByte(byteHolder);
 			out.write(abyte);
-			counter++;
 		}
+//		fout.write(outputBuffer);
 
 //		for(int i =0;i<outputBuffer.length();i++) {
 //			if(outputBuffer.charAt(i) == '0') {
