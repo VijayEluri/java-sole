@@ -1,22 +1,19 @@
 package main;
 
-// File   : gui/low-level/drawing2/DemoDrawing2.java
-// Purpose: Demo creating new graphical component.
-//          Uses anonymous inner class listener, BorderLayout
-// Author : Fred Swartz - 21 Sept 2006 - Placed in public domain.
-
 
 import java.awt.*;
 import java.awt.event.*;
 import java.io.IOException;
 import javax.swing.*;
 
-///////////////////////////////////////////////////// DemoDrawing2
-@SuppressWarnings("serial")
 public class SoleDemo extends JFrame {
 
     //===================================================== fields
 
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	private static JTextArea output = new JTextArea();
     private JTextArea input = new JTextArea();
     private static JTextArea outInput = new JTextArea();
@@ -58,10 +55,8 @@ public class SoleDemo extends JFrame {
                 		
                 		
 					} catch (IOException e1) {
-						// TODO Auto-generated catch block
 						e1.printStackTrace();
 					} catch (InterruptedException e1) {
-						// TODO Auto-generated catch block
 						e1.printStackTrace();
 					}
                 }

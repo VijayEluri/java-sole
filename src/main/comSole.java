@@ -13,21 +13,6 @@ public class comSole{
     	
     }
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-
 	
 	/*
 	 * 
