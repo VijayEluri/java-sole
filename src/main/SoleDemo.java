@@ -7,9 +7,6 @@ import java.io.IOException;
 import javax.swing.*;
 
 public class SoleDemo extends JFrame {
-
-    //===================================================== fields
-
 	/**
 	 * 
 	 */
@@ -25,10 +22,8 @@ public class SoleDemo extends JFrame {
     private JLabel l3 = new JLabel();
     private JLabel l4 = new JLabel();
     private JLabel l5 = new JLabel();
-    //================================================ Constructor
-    public SoleDemo() {
 
-        
+    public SoleDemo() {
         JButton changeColorBtn = new JButton("Very SOLE!");
         changeColorBtn.addActionListener(new ActionListener() {
                 public void actionPerformed(ActionEvent e) {
@@ -62,7 +57,6 @@ public class SoleDemo extends JFrame {
                 }
             });
 
-        //... Add components to layout
         JPanel content = new JPanel();
         content.setLayout(new BoxLayout(content, BoxLayout.PAGE_AXIS));
         
@@ -116,10 +110,6 @@ public class SoleDemo extends JFrame {
         setTitle("SOLE Demo");
         pack();
     }
-
-
-
-    //========================================================== main
     public static void main(String[] args) throws IOException, InterruptedException {
         JFrame window = new SoleDemo();
         window.setVisible(true);;

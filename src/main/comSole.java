@@ -8,54 +8,46 @@ import java.math.BigInteger;
 
 public class comSole{
     public static void main(String[] args) throws IOException, InterruptedException {
-    	
-    	System.out.println(soleDecodeString(10,1,soleEncodeString(10,1,"9 9 9 9 8")));
-    	
+    	System.out.println(soleDecodeString(10,1,soleEncodeString(10,1,"9 9 9 9 8")));	
     }
     
-	
-	/*
-	 * 
-	 * finalized parameters
-	 * 
-	 */
 	private final static int reg = 0, head_mask = 1, cut_tail = 2, cut_front = 4, 
 	flip_flag = 8, flip_flag_late = 16, end_flag = 32, odd_flag = 64, even_flag = 128;
-	/*
-	 * 
-	 * public configurations
-	 */
 	
-	private static boolean enableHex = false, enableHash = true;
-	@SuppressWarnings("unused")
-	private static boolean enableFileOutput = false, enableFileInput = false;
-	private static boolean printOutput = false, printInput = false;
-	/*
-	 * 
-	 * 
-	 * object
-	 * come from constructor
-	 * 
-	 * 
-	 */
-	
+	private static boolean enableHash = true;
+	private static boolean enableFileOutput = false;
 	
 	private static int b;// number of bits in a block
 	private static int mode;// 1 means 3 blocks overhead, 2 means 1 block overhead
-	private static String inputString;
-	private static String filename, format;
-	
 	private static BigInteger blockSize, n;
 	
+	private static FileInputStream in;
+	private static FileOutputStream fos;
+	private static DataOutputStream out;
 
+	private static BigInteger A, x, y, Api, nextx, nexty, z;
+	
+	private static BigInteger local[];
+	private static BigInteger encoderIndex, decoderIndex;
+	private static String bin, buffer, outputBuffer;
+	
+	private static BigInteger xypi[];
+	private static BigInteger decoderBuffer[];
+	
+	private static byte[] datablock;//for hash usage
+	
+	private static String decodedOutputString;
+	private static String inputString;
+	private static String outputString;
+	
+	private static String filename, format;
+	
 	static String soleDecodeString(int numberOfBits, int decodingMode, String input) throws IOException {
 		init();
 		b = numberOfBits;
 		mode = decodingMode;
 		blockSize = BigInteger.valueOf(2).pow(b);
 		n = (BigInteger.valueOf(2).pow(b / 2)).add(BigInteger.valueOf(mode / 2));
-		
-		
 		
 		String[] inputArray = input.split(" ");
 		//System.out.println("You have entered " + inputArray.length + " numbers."); 
@@ -144,81 +136,52 @@ public class comSole{
 		
 		return decodedOutputString;
 	}
-	public static String getHash() {
-		return Blake32.getHash(); 
-	}
-	
-
 	static String soleEncodeString(int numberOfBits, int encodingMode, String input) throws IOException, InterruptedException {
 		init();
 		b = numberOfBits;
 		mode = encodingMode;
-		inputString = input;
-		Integer inputnum = inputString.split(" ").length;
 		blockSize = BigInteger.valueOf(2).pow(b);
 		n = (BigInteger.valueOf(2).pow(b / 2)).add(BigInteger.valueOf(mode / 2));
+		
+		inputString = input;
+		Integer inputnum = inputString.split(" ").length;
 		//System.out.println("You have entered " + inputnum + " numbers.");
 		//System.out.println(input);
+		
 		if(new BigInteger(inputnum.toString()).compareTo(n)>0) {
 			return "You should enter at most " + b + " numbers.";
 		}
-		
 		
 		readInput();
 		//System.out.println("SOLE gives you " + outputString.split(" ").length + " numbers.");
 		return outputString;
 	}
 	static void soleEncodeFile(int numberOfBits, int encodingMode, String inputFileName, String inputFileFormat) throws IOException, InterruptedException {
+		init();
 		b = numberOfBits;
 		mode = encodingMode;
+		blockSize = BigInteger.valueOf(2).pow(b);
+		n = (BigInteger.valueOf(2).pow(b / 2)).add(BigInteger.valueOf(mode / 2));
+		
 		filename = inputFileName;
 		format = inputFileFormat;
 		
-		enableFileInput = true;
 		enableFileOutput = true;
 		
-		blockSize = BigInteger.valueOf(2).pow(b);
-		n = (BigInteger.valueOf(2).pow(b / 2)).add(BigInteger.valueOf(mode / 2));
-		init();
 		readFromFile();
 	}
-	
-	
-	private static FileInputStream in;
-	private static FileOutputStream fos;
-	private static DataOutputStream out;
-	
-	
-
-	
-	/*
-	 * 
-	 * 
-	 * 
-	 */
-	private static BigInteger local[] = new BigInteger[4];
-	private static BigInteger A, x, y, Api, nextx, nexty, z, xypi[];
-	private static BigInteger encoderIndex = BigInteger.ONE, decoderIndex = BigInteger.ONE;
-	private static String bin, buffer, outputBuffer = "";
-	private static BigInteger decoderBuffer[];
-	private static String[] numsArr;
-	private static byte[] datablock = new byte[64];//for hash usage
-
-	private static String outputString = "";
-	private static String decodedOutputString = "";
-	
 	private static void init() {
 		local = new BigInteger[4];
 		encoderIndex = BigInteger.ONE; decoderIndex = BigInteger.ONE;
 		bin = ""; buffer= ""; outputBuffer = "";
 		xypi = new BigInteger[2];
 		decoderBuffer = new BigInteger[4];
-		datablock = new byte[64];//for hash usage
+		datablock = new byte[64];
 		decodedOutputString = "";
 		inputString = "";
 		outputString = "";
+		filename = ""; format = "";
 	}
-	
 	private static void sendResultToHash(BigInteger comingBigInt, int control) {
 		if(enableHash){
 			byte[] tempBytes = comingBigInt.toByteArray();
@@ -270,7 +233,6 @@ public class comSole{
 			
 			outputString = outputString + xypi[0];
 			
-			printxypi(head_mask);
 			handleCompIn(head_mask);
 			
 
@@ -282,7 +244,6 @@ public class comSole{
 
 			xypi = compOut(reg);
 			outputString = outputString + " " + xypi[0]  + " " +  xypi[1];
-			printxypi(reg);
 			handleCompIn(head_mask);			
 			
 			
@@ -293,7 +254,6 @@ public class comSole{
 
 			xypi = compOut(reg);
 			outputString = outputString + " " + xypi[0]  + " " +  xypi[1];
-			printxypi(reg);
 			handleCompIn(reg);
 		}
 	}
@@ -438,7 +398,6 @@ public class comSole{
 			} 
 			xypi = compOut(reg);
 			outputString = outputString + " " + xypi[0]  + " " +  xypi[1];
-			printxypi(reg);
 			if((head_flag & head_mask)>0) {
 				handleCompIn(head_mask);
 			}
@@ -453,7 +412,6 @@ public class comSole{
 				local[3] = blockSize;
 				xypi = compOut(reg);
 				outputString = outputString + " " + xypi[0]  + " " +  xypi[1];
-				printxypi(reg);
 				handleCompIn(reg);
 				
 				forward();
@@ -461,7 +419,6 @@ public class comSole{
 				local[3] = BigInteger.ZERO;
 				xypi = compOut(reg);
 				outputString = outputString + " " + xypi[0]  + " " +  xypi[1];
-				printxypi(reg);
 				handleCompIn(reg);
 			} else if (mode == 2 || mode == 4) {
 				
@@ -469,7 +426,6 @@ public class comSole{
 				local[3] = BigInteger.ZERO;
 				xypi = compOut(reg);
 				outputString = outputString + " " + xypi[0]  + " " +  xypi[1];
-				printxypi(reg);
 				handleCompIn(cut_front);//front is EOF
 			}
 			
@@ -524,8 +480,7 @@ public class comSole{
 				local[3] = new BigInteger(
 						(bin.substring(b, 2 * b)), 2);
 				xypi = compOut(reg);
-				outputString = outputString + " " + xypi[0]  + " " +  xypi[1];
-				printxypi(reg);				
+				outputString = outputString + " " + xypi[0]  + " " +  xypi[1];			
 				if((head_flag & head_mask) > 0){
 					handleCompIn(head_mask);
 				}
@@ -544,7 +499,6 @@ public class comSole{
 				local[3] = blockSize;
 				xypi = compOut(reg);
 				outputString = outputString + " " + xypi[0]  + " " +  xypi[1];
-				printxypi(reg);
 				handleCompIn(reg);
 			} else if (mode == 2 || mode == 4) {
 				local[2] = new BigInteger(
@@ -563,7 +517,6 @@ public class comSole{
 			if (mode == 1) {
 				xypi = compOut(reg);
 				outputString = outputString + " " + xypi[0]  + " " +  xypi[1];
-				printxypi(reg);
 				handleCompIn(cut_tail);
 				
 				return;// the end for mode 1
@@ -614,7 +567,6 @@ public class comSole{
 
 				xypi = compOut(reg);
 				outputString = outputString + " " + xypi[0]  + " " +  xypi[1];
-				printxypi(reg);
 				
 				decoderBuffer[0] = d0;
 				decoderBuffer[1] = d1;
@@ -634,7 +586,6 @@ public class comSole{
 						lastBlock, 2);
 				xypi = compOut(reg);
 				outputString = outputString + " " + xypi[0]  + " " +  xypi[1];
-				printxypi(reg);
 				handleCompIn(cut_front);//front is EOF
 				
 				BigInteger EOF = xypi[0];
@@ -651,7 +602,6 @@ public class comSole{
 				local[3] = BigInteger.ZERO;
 				xypi = compOut(reg);
 				outputString = outputString + " " + xypi[0];
-				printxypi(reg);
 
 			
 				/*
@@ -677,7 +627,7 @@ public class comSole{
 	}
 
 	private static String handleInput(String nums, int radix) {
-		numsArr = nums.split(" ");
+		String[] numsArr = nums.split(" ");
 		if(BigInteger.valueOf(numsArr.length).compareTo(n) > 0) {
 			return "overflow";
 		}
@@ -722,30 +672,6 @@ public class comSole{
 		return bits;
 	}
 
-	private static String padHexFront(String bits) {
-		while (bits.length() * 4 < b) {
-			bits = "0" + bits;
-		}
-		return bits;
-	}
-	private static void printxypi(int control) {
-		if (printOutput) {
-			if (enableHex) {
-				System.out.println(padHexFront(xypi[0].toString(16)));
-			}
-			else {
-				System.out.println(xypi[0].toString(10));
-			}
-			if ((head_mask & control) == 0) {
-				if (enableHex) {
-					System.out.println(padHexFront(xypi[1].toString(16)));
-				}
-				else {
-					System.out.println(xypi[1].toString(10));
-				}
-			}
-		}
-	}
 	private static void readFromFile() throws IOException, InterruptedException {
 		try {
 			in = new FileInputStream(filename + "." +format);
@@ -787,33 +713,6 @@ public class comSole{
 		return new BigInteger[] { z.mod(Api), z.divide(Api) };
 	}
 	private static void finalOutput(int control) throws IOException{
-		if (printInput) {
-			if (enableHex) {
-				if((control & cut_front) == 0) {
-					System.out.println(padHexFront(xypi[0].toString(16)));
-				}
-				if((control & cut_tail) == 0) {
-					System.out.println(padHexFront(xypi[1].toString(16)));
-				}
-			} else {
-				if((control & cut_front) == 0) {
-					if((control & flip_flag) > 0) {
-						System.out.println(new BigInteger(flipBits(xypi[0].toString(2)),2).toString(10));
-					}
-					else {
-						System.out.println(xypi[0].toString(10));
-					}
-				}
-				if((control & cut_tail) == 0) {
-					if((control & flip_flag_late) > 0) {
-						System.out.println(new BigInteger(flipBits(xypi[1].toString(2)),2).toString(10));
-					}
-					else {
-						System.out.println(xypi[1].toString(10));
-					}
-				}
-			}
-		}
 		if(enableFileOutput) {
 			writeBack(control);
 		}
@@ -839,7 +738,6 @@ public class comSole{
 
 		
 		if(s0.length() > b) {
-			//System.out.println(xypi[0].toString(16));
 			outputBuffer = outputBuffer + s1;
 		}
 		else if((cut_tail & control) > 0) {
@@ -848,7 +746,6 @@ public class comSole{
 		else {
 			outputBuffer = outputBuffer + s0 + s1;
 		}
-		
 		
 //		fout.write(outputBuffer);
 		String byteHolder = "";
@@ -898,7 +795,6 @@ public class comSole{
 			sendResultToDecoder(xypi);
 			sendResultToHash(xypi[0], reg);
 			
-			
 			if((control & cut_tail) > 0) {
 				xypi = compIn(reg);
 			
@@ -912,5 +808,8 @@ public class comSole{
 			}
 			
 		}
+	}
+	static String getHash() {
+		return Blake32.getHash(); 
 	}
 }
