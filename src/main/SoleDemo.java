@@ -11,10 +11,11 @@ public class SoleDemo extends JFrame {
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
+	
 	private static JTextArea output = new JTextArea();
-    private JTextArea input = new JTextArea();
+    private static JTextArea input = new JTextArea();
     private static JTextArea outInput = new JTextArea();
-    private JTextArea config = new JTextArea();
+    private static JTextArea config = new JTextArea();
     private static JTextArea hash = new JTextArea();
     
     private JLabel l1 = new JLabel();
@@ -36,13 +37,13 @@ public class SoleDemo extends JFrame {
                 		if(decode == 1) {
                 			String inNum = outInput.getText().trim();
                 			output.setText("You have entered " + inNum.split(" ").length + " numbers.");
-                    		String returnString = comSole.soleDecodeString(bits,solemode,inNum);
+                    		String returnString = comSole.decodeString(bits,solemode,inNum);
                     		output.setText(output.getText()+ "\nSole gives you " + returnString.split(" ").length + " numbers.");
                     		output.setText(output.getText()+ "\nThey are:\n" + returnString);
                 		} else {
                 			String inNum = input.getText().trim();
                     		output.setText("You have entered " + inNum.split(" ").length + " numbers.");
-                    		String returnString = comSole.soleEncodeString(bits,solemode,inNum);
+                    		String returnString = comSole.encodeString(bits,solemode,inNum);
                     		output.setText(output.getText()+ "\nSole gives you " + returnString.split(" ").length + " numbers.");
                     		output.setText(output.getText()+ "\nThey are:\n" + returnString);
                     		hash.setText(comSole.getHash());

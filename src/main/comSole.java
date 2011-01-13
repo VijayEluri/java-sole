@@ -8,7 +8,7 @@ import java.math.BigInteger;
 
 public class comSole{
     public static void main(String[] args) throws IOException, InterruptedException {
-    	System.out.println(soleDecodeString(10,1,soleEncodeString(10,1,"9 9 9 9 8")));	
+    	System.out.println(decodeString(10,1,encodeString(10,1,"9 9 9 9 8")));	
     }
     
 	private final static int reg = 0, head_mask = 1, cut_tail = 2, cut_front = 4, 
@@ -42,7 +42,7 @@ public class comSole{
 	
 	private static String filename, format;
 	
-	static String soleDecodeString(int numberOfBits, int decodingMode, String input) throws IOException {
+	static String decodeString(int numberOfBits, int decodingMode, String input) throws IOException {
 		init();
 		b = numberOfBits;
 		mode = decodingMode;
@@ -68,9 +68,7 @@ public class comSole{
 			
 			encoderIndex = encoderIndex.add(BigInteger.ONE);
 			handleCompIn(reg);
-			
 
-			
 			if(mode == 2){
 			if(xypi[0].compareTo(blockSize.add(BigInteger.ONE)) == 0) {
 				if(inputArray.length - i == 2) {
@@ -136,7 +134,7 @@ public class comSole{
 		
 		return decodedOutputString;
 	}
-	static String soleEncodeString(int numberOfBits, int encodingMode, String input) throws IOException, InterruptedException {
+	static String encodeString(int numberOfBits, int encodingMode, String input) throws IOException, InterruptedException {
 		init();
 		b = numberOfBits;
 		mode = encodingMode;
@@ -152,11 +150,11 @@ public class comSole{
 			return "You should enter at most " + b + " numbers.";
 		}
 		
-		readInput();
+		readString();
 		//System.out.println("SOLE gives you " + outputString.split(" ").length + " numbers.");
 		return outputString;
 	}
-	static void soleEncodeFile(int numberOfBits, int encodingMode, String inputFileName, String inputFileFormat) throws IOException, InterruptedException {
+	static void encodeFile(int numberOfBits, int encodingMode, String inputFileName, String inputFileFormat) throws IOException, InterruptedException {
 		init();
 		b = numberOfBits;
 		mode = encodingMode;
@@ -168,7 +166,7 @@ public class comSole{
 		
 		enableFileOutput = true;
 		
-		readFromFile();
+		readFile();
 	}
 	private static void init() {
 		local = new BigInteger[4];
@@ -228,25 +226,16 @@ public class comSole{
 		{
 			local[0] = new BigInteger(buffer1, 2);
 			local[1] = new BigInteger(buffer2, 2);
-
 			xypi = compOut(head_mask);
-			
 			outputString = outputString + xypi[0];
-			
 			handleCompIn(head_mask);
-			
-
-			
 		} else if (local[2] == null)// compute the 2nd and 3rd output
 		{
 			local[2] = new BigInteger(buffer1, 2);
 			local[3] = new BigInteger(buffer2, 2);
-
 			xypi = compOut(reg);
 			outputString = outputString + " " + xypi[0]  + " " +  xypi[1];
 			handleCompIn(head_mask);			
-			
-			
 		} else {
 			forward();
 			local[2] = new BigInteger(buffer1, 2);
@@ -348,7 +337,7 @@ public class comSole{
 	private static String get3Plus(String more) throws IOException {
 		int c = in.read();
 		while (c != -1) {
-			more = more + padByteFront(Integer.toBinaryString(c));
+			more = more + padFront(Integer.toBinaryString(c),8);
 			if (more.length() <= 3 * b) {
 				c = in.read();
 			} else {
@@ -369,7 +358,7 @@ public class comSole{
 		}
 		return String.valueOf(bitsChars);
 	}
-	private static void handleEOF(String bin) throws IOException {
+	private static void EOF(String bin) throws IOException {
 		String lastBlock;
 		if (bin.length() <= 2 * b) {
 			System.out.println("here");
@@ -625,8 +614,60 @@ public class comSole{
 			}
 		}
 	}
+	private static void overflowAlert() {
+		if (n.compareTo(encoderIndex.subtract(BigInteger.ONE).multiply(
+				BigInteger.valueOf(2).add(BigInteger.ONE))) < 0) {
+			
+			System.out.println(">>> >>> overflow <<< <<<");
+			System.out.println(encoderIndex.subtract(BigInteger.ONE).multiply(
+					BigInteger.valueOf(2).add(BigInteger.ONE))
+					+ ": " + n);
+			System.out.println(">>> >>> overflow <<< <<<");
+		}
+	}
+	private static String padFront(String bits, int len) {
+		while (bits.length() < len) {
+			bits = "0" + bits;
+		}
+		return bits;
+	}
 
-	private static String handleInput(String nums, int radix) {
+	private static void readFile() throws IOException, InterruptedException {
+		try {
+			in = new FileInputStream(filename + "." +format);
+			fos = new FileOutputStream(filename + System.currentTimeMillis() / 1000L + "." + format);
+			out = new DataOutputStream(fos);
+			bin = get3Plus("");
+			while (bin.length() > 3 * b) {
+				buffer = bin.substring(0, 2 * b);
+				bufferComp();
+				bin = get3Plus(bin.substring(2 * b));
+			}
+			EOF(bin);
+		}
+		finally {
+			if (in != null) {
+				in.close();
+				out.close();
+			}
+		}
+	}
+
+	private static void readString() throws IOException, InterruptedException {
+		String bin = readString2(inputString, 10);
+		if(bin.compareTo("overflow") == 0) {
+			System.out.print("overflow");
+		}
+		else{
+			while (bin.length() > 3 * b) {
+				buffer = bin.substring(0, 2 * b);
+				bufferComp();
+				bin = bin.substring(2 * b);
+			}
+			EOF(bin);
+		}
+	}
+	private static String readString2(String nums, int radix) {
 		String[] numsArr = nums.split(" ");
 		if(BigInteger.valueOf(numsArr.length).compareTo(n) > 0) {
 			return "overflow";
@@ -641,121 +682,56 @@ public class comSole{
 				break;
 			}
 			else {
-				binStream = binStream + padBinaryFront(tempBig.toString(2));
+				binStream = binStream + padFront(tempBig.toString(2),b);
 			}
 		}
 		return binStream;
 	}
-	
-
-	private static void overflowAlert() {
-		if (n.compareTo(encoderIndex.subtract(BigInteger.ONE).multiply(
-				BigInteger.valueOf(2).add(BigInteger.ONE))) < 0) {
-			
-			System.out.println(">>> >>> overflow <<< <<<");
-			System.out.println(encoderIndex.subtract(BigInteger.ONE).multiply(
-					BigInteger.valueOf(2).add(BigInteger.ONE))
-					+ ": " + n);
-			System.out.println(">>> >>> overflow <<< <<<");
-		}
-	}
-	private static String padByteFront(String bits) {
-		while (bits.length() < 8) {
-			bits = "0" + bits;
-		}
-		return bits;
-	}
-	private static String padBinaryFront(String bits) {
-		while (bits.length() < b) {
-			bits = "0" + bits;
-		}
-		return bits;
-	}
-
-	private static void readFromFile() throws IOException, InterruptedException {
-		try {
-			in = new FileInputStream(filename + "." +format);
-			fos = new FileOutputStream(filename + System.currentTimeMillis() / 1000L + "." + format);
-			out = new DataOutputStream(fos);
-			bin = get3Plus("");
-			while (bin.length() > 3 * b) {
-				buffer = bin.substring(0, 2 * b);
-				bufferComp();
-				bin = get3Plus(bin.substring(2 * b));
-			}
-			handleEOF(bin);
-		}
-		finally {
-			if (in != null) {
-				in.close();
-				out.close();
-			}
-		}
-	}
-
-	private static void readInput() throws IOException, InterruptedException {
-		String bin = handleInput(inputString, 10);
-		if(bin.compareTo("overflow") == 0) {
-			System.out.print("overflow");
-		}
-		else{
-			while (bin.length() > 3 * b) {
-				buffer = bin.substring(0, 2 * b);
-				bufferComp();
-				bin = bin.substring(2 * b);
-			}
-			handleEOF(bin);
-		}
-	}
-
 	private static BigInteger[] swap() {
 		z = y.multiply(A).add(x);
 		return new BigInteger[] { z.mod(Api), z.divide(Api) };
 	}
-	private static void finalOutput(int control) throws IOException{
-		if(enableFileOutput) {
-			writeBack(control);
-		}
-	}
 	private static void writeBack(int control) throws NumberFormatException, IOException {
-		String s0 = "",s1 = "";
-		s0 = xypi[0].toString(2);
-		s1 = xypi[1].toString(2);
-		
-		if((control & flip_flag) > 0) {
-			s0 = flipBits(xypi[0].toString(2));
-		}
-		else if((control & flip_flag_late) > 0) {			
-			s1 = flipBits(xypi[1].toString(2));
-		}
-		if(s0.length() < b && (((end_flag & control) == 0)||((even_flag & control) > 0))) {
-			s0 = padBinaryFront(s0);
-		}
-
-		if(s1.length() < b && (((end_flag & control) == 0))) {
-			s1 = padBinaryFront(s1);
-		}
-
-		
-		if(s0.length() > b) {
-			outputBuffer = outputBuffer + s1;
-		}
-		else if((cut_tail & control) > 0) {
-			outputBuffer = outputBuffer + s0;
-		}
-		else {
-			outputBuffer = outputBuffer + s0 + s1;
-		}
-		
-//		fout.write(outputBuffer);
-		String byteHolder = "";
-		byte abyte = 0;
-
-		while(outputBuffer.length() >= 8) {
-			byteHolder = outputBuffer.substring(0, 8);
-			outputBuffer = outputBuffer.substring(8);
-			abyte = buildByte(byteHolder);
-			out.write(abyte);
+		if(enableFileOutput) {
+			String s0 = "",s1 = "";
+			s0 = xypi[0].toString(2);
+			s1 = xypi[1].toString(2);
+			
+			if((control & flip_flag) > 0) {
+				s0 = flipBits(xypi[0].toString(2));
+			}
+			else if((control & flip_flag_late) > 0) {			
+				s1 = flipBits(xypi[1].toString(2));
+			}
+			if(s0.length() < b && (((end_flag & control) == 0)||((even_flag & control) > 0))) {
+				s0 = padFront(s0,b);
+			}
+	
+			if(s1.length() < b && (((end_flag & control) == 0))) {
+				s1 = padFront(s1,b);
+			}
+	
+			
+			if(s0.length() > b) {
+				outputBuffer = outputBuffer + s1;
+			}
+			else if((cut_tail & control) > 0) {
+				outputBuffer = outputBuffer + s0;
+			}
+			else {
+				outputBuffer = outputBuffer + s0 + s1;
+			}
+			
+	//		fout.write(outputBuffer);
+			String byteHolder = "";
+			byte abyte = 0;
+	
+			while(outputBuffer.length() >= 8) {
+				byteHolder = outputBuffer.substring(0, 8);
+				outputBuffer = outputBuffer.substring(8);
+				abyte = buildByte(byteHolder);
+				out.write(abyte);
+			}
 		}
 	}
 	private static byte buildByte(String bits) {
@@ -788,7 +764,7 @@ public class comSole{
 				sendResultToHash(xypi[1], reg);
 				xypi = compIn(head_mask);
 				
-				finalOutput(reg);
+				writeBack(reg);
 			}
 		}
 		else{
@@ -798,13 +774,13 @@ public class comSole{
 			if((control & cut_tail) > 0) {
 				xypi = compIn(reg);
 			
-				finalOutput(control);
+				writeBack(control);
 			}
 			else {
 				sendResultToHash(xypi[1], reg);
 				xypi = compIn(reg);
 				
-				finalOutput(control);
+				writeBack(control);
 			}
 			
 		}
