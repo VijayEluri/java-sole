@@ -54,12 +54,12 @@ public class comSole{
 		//System.out.println(input);
 		xypi[0] = new BigInteger(inputArray[0]);
 		xypi[1] = new BigInteger("0");
-		handleCompIn(head_mask);
+		encode2decode(head_mask);
 
 		xypi[0] = new BigInteger(inputArray[1]);
 		xypi[1] = new BigInteger(inputArray[2]);
 		encoderIndex = encoderIndex.add(BigInteger.ONE);
-		handleCompIn(head_mask);
+		encode2decode(head_mask);
 		decodedOutputString = decodedOutputString + xypi[0];
 		decodedOutputString = decodedOutputString + " " + xypi[1];
 		for(int i=3;i<inputArray.length;i = i+2) {
@@ -67,7 +67,7 @@ public class comSole{
 			xypi[1] = new BigInteger(inputArray[i+1]);
 			
 			encoderIndex = encoderIndex.add(BigInteger.ONE);
-			handleCompIn(reg);
+			encode2decode(reg);
 
 			if(mode == 2){
 			if(xypi[0].compareTo(blockSize.add(BigInteger.ONE)) == 0) {
@@ -77,7 +77,7 @@ public class comSole{
 					xypi[0] = new BigInteger("1");
 					xypi[1] = new BigInteger("0");
 					encoderIndex = encoderIndex.add(BigInteger.ONE);
-					handleCompIn(reg);
+					encode2decode(reg);
 					decodedOutputString = decodedOutputString + " " + xypi[0];
 					}
 					else {
@@ -86,7 +86,7 @@ public class comSole{
 						xypi[0] = new BigInteger(inputArray[i+2]);
 						xypi[1] = new BigInteger("1");
 						encoderIndex = encoderIndex.add(BigInteger.ONE);
-						handleCompIn(reg);
+						encode2decode(reg);
 						decodedOutputString = decodedOutputString + " " + xypi[0];
 						decodedOutputString = decodedOutputString + " " + xypi[1];
 					}
@@ -101,7 +101,7 @@ public class comSole{
 					xypi[0] = new BigInteger("0");
 					xypi[1] = new BigInteger("0");
 					encoderIndex = encoderIndex.add(BigInteger.ONE);
-					handleCompIn(reg);
+					encode2decode(reg);
 					decodedOutputString = decodedOutputString + " " + xypi[0];
 				}
 				else {
@@ -110,7 +110,7 @@ public class comSole{
 					xypi[0] = new BigInteger(inputArray[i+2]);
 					xypi[1] = new BigInteger("0");
 					encoderIndex = encoderIndex.add(BigInteger.ONE);
-					handleCompIn(reg);
+					encode2decode(reg);
 					decodedOutputString = decodedOutputString + " " + out1;
 					decodedOutputString = decodedOutputString + " " + out0;
 					decodedOutputString = decodedOutputString + " " + xypi[0];
@@ -180,7 +180,7 @@ public class comSole{
 		outputString = "";
 		filename = ""; format = "";
 	}
-	private static void sendResultToHash(BigInteger comingBigInt, int control) {
+	private static void hash_send2Hash(BigInteger comingBigInt, int control) {
 		if(enableHash){
 			byte[] tempBytes = comingBigInt.toByteArray();
 			int diff = tempBytes.length - 64;
@@ -212,42 +212,41 @@ public class comSole{
 			}
 		}
 	}
-	private static void sendResultToDecoder(BigInteger[] comingBigInt){
+	private static void send2Decoder(BigInteger[] comingBigInt){
 		decoderBuffer[0] = decoderBuffer[2];
 		decoderBuffer[1] = decoderBuffer[3];
 		decoderBuffer[2] = comingBigInt[0];
 		decoderBuffer[3] = comingBigInt[1];
 	}
 
-	private static void bufferComp() throws IOException {
+	private static void getOutput() throws IOException {
 		String buffer1 = buffer.substring(0, b);
 		String buffer2 = buffer.substring(b);
-		if (local[0] == null)// compute the first output
-		{
+		// compute the first output
+		if (local[0] == null) {
 			local[0] = new BigInteger(buffer1, 2);
 			local[1] = new BigInteger(buffer2, 2);
-			xypi = compOut(head_mask);
+			xypi = getOutput2(head_mask);
 			outputString = outputString + xypi[0];
-			handleCompIn(head_mask);
-		} else if (local[2] == null)// compute the 2nd and 3rd output
-		{
+			encode2decode(head_mask);
+		// compute the 2nd and 3rd output
+		} else if (local[2] == null) {
 			local[2] = new BigInteger(buffer1, 2);
 			local[3] = new BigInteger(buffer2, 2);
-			xypi = compOut(reg);
+			xypi = getOutput2(reg);
 			outputString = outputString + " " + xypi[0]  + " " +  xypi[1];
-			handleCompIn(head_mask);			
+			encode2decode(head_mask);			
 		} else {
 			forward();
 			local[2] = new BigInteger(buffer1, 2);
 			local[3] = new BigInteger(buffer2, 2);
-
-			xypi = compOut(reg);
+			xypi = getOutput2(reg);
 			outputString = outputString + " " + xypi[0]  + " " +  xypi[1];
-			handleCompIn(reg);
+			encode2decode(reg);
 		}
 	}
 
-	private static BigInteger[] compIn(int control) {
+	private static BigInteger[] getInput(int control) {
 		
 		decoderIndex = encoderIndex.subtract(BigInteger.valueOf(2));
 		// 1 pass
@@ -292,7 +291,7 @@ public class comSole{
 		return swap();
 	}
 
-	private static BigInteger[] compOut(int control) {
+	private static BigInteger[] getOutput2(int control) {
 
 		// 1 pass
 		A = blockSize.add(BigInteger.valueOf(mode));
@@ -334,7 +333,7 @@ public class comSole{
 		local[1] = local[3];
 	}
 	
-	private static String get3Plus(String more) throws IOException {
+	private static String get4Blocks(String more) throws IOException {
 		int c = in.read();
 		while (c != -1) {
 			more = more + padFront(Integer.toBinaryString(c),8);
@@ -385,13 +384,13 @@ public class comSole{
 				}				
 				local[3] = new BigInteger((bin.substring(0, b)), 2);
 			} 
-			xypi = compOut(reg);
+			xypi = getOutput2(reg);
 			outputString = outputString + " " + xypi[0]  + " " +  xypi[1];
 			if((head_flag & head_mask)>0) {
-				handleCompIn(head_mask);
+				encode2decode(head_mask);
 			}
 			else{
-				handleCompIn(reg);
+				encode2decode(reg);
 			}
 			
 			// step 2
@@ -399,23 +398,23 @@ public class comSole{
 			if (mode == 1) {
 				local[2] = blockSize;
 				local[3] = blockSize;
-				xypi = compOut(reg);
+				xypi = getOutput2(reg);
 				outputString = outputString + " " + xypi[0]  + " " +  xypi[1];
-				handleCompIn(reg);
+				encode2decode(reg);
 				
 				forward();
 				local[2] = BigInteger.ZERO;
 				local[3] = BigInteger.ZERO;
-				xypi = compOut(reg);
+				xypi = getOutput2(reg);
 				outputString = outputString + " " + xypi[0]  + " " +  xypi[1];
-				handleCompIn(reg);
+				encode2decode(reg);
 			} else if (mode == 2 || mode == 4) {
 				
 				local[2] = new BigInteger(lastBlock, 2);
 				local[3] = BigInteger.ZERO;
-				xypi = compOut(reg);
+				xypi = getOutput2(reg);
 				outputString = outputString + " " + xypi[0]  + " " +  xypi[1];
-				handleCompIn(cut_front);//front is EOF
+				encode2decode(cut_front);//front is EOF
 			}
 			
 			
@@ -429,10 +428,8 @@ public class comSole{
 				forward();
 				local[2] = BigInteger.ZERO;
 				local[3] = BigInteger.ZERO;
-				xypi = compOut(reg);
-				//printxypi(reg);//if print just two zeros
-
-				handleCompIn(odd_flag | end_flag | cut_tail | flippy);//tail should be zero
+				xypi = getOutput2(reg);
+				encode2decode(odd_flag | end_flag | cut_tail | flippy);//tail should be zero
 			}
 
 		}
@@ -468,13 +465,13 @@ public class comSole{
 				local[2] = new BigInteger((bin.substring(0, b)), 2);
 				local[3] = new BigInteger(
 						(bin.substring(b, 2 * b)), 2);
-				xypi = compOut(reg);
+				xypi = getOutput2(reg);
 				outputString = outputString + " " + xypi[0]  + " " +  xypi[1];			
 				if((head_flag & head_mask) > 0){
-					handleCompIn(head_mask);
+					encode2decode(head_mask);
 				}
 				else{
-					handleCompIn(reg);
+					encode2decode(reg);
 				}
 			} else if (mode == 2 || mode == 4) {
 				local[2] = new BigInteger((bin.substring(0, b)), 2);
@@ -486,9 +483,9 @@ public class comSole{
 			if (mode == 1) {
 				local[2] = new BigInteger((bin.substring(2 * b)), 2);
 				local[3] = blockSize;
-				xypi = compOut(reg);
+				xypi = getOutput2(reg);
 				outputString = outputString + " " + xypi[0]  + " " +  xypi[1];
-				handleCompIn(reg);
+				encode2decode(reg);
 			} else if (mode == 2 || mode == 4) {
 				local[2] = new BigInteger(
 						(bin.substring(b, 2 * b)), 2);
@@ -504,13 +501,13 @@ public class comSole{
 			local[3] = BigInteger.ZERO;
 
 			if (mode == 1) {
-				xypi = compOut(reg);
+				xypi = getOutput2(reg);
 				outputString = outputString + " " + xypi[0]  + " " +  xypi[1];
-				handleCompIn(cut_tail);
+				encode2decode(cut_tail);
 				
 				return;// the end for mode 1
 			} else if (mode == 2 || mode == 4) {
-				xypi = compOut(reg);
+				xypi = getOutput2(reg);
 				boolean lastbitOne = (xypi[1].compareTo(BigInteger.ZERO) > 0);
 				encoderIndex = encoderIndex.subtract(BigInteger.ONE);
 
@@ -554,7 +551,7 @@ public class comSole{
 				local[3] = new BigInteger(
 						(bin.substring(0, b)), 2);
 
-				xypi = compOut(reg);
+				xypi = getOutput2(reg);
 				outputString = outputString + " " + xypi[0]  + " " +  xypi[1];
 				
 				decoderBuffer[0] = d0;
@@ -563,33 +560,34 @@ public class comSole{
 				decoderBuffer[3] = d3;
 				
 				if((head_flag & head_mask) > 0){
-					handleCompIn(head_mask);
+					encode2decode(head_mask);
 				}
 				else {
-				handleCompIn(reg);
+				encode2decode(reg);
 				}
 				forward();
 				local[2] = new BigInteger((bin.substring(b,
 						2 * b)), 2);
 				local[3] = new BigInteger(
 						lastBlock, 2);
-				xypi = compOut(reg);
+				xypi = getOutput2(reg);
 				outputString = outputString + " " + xypi[0]  + " " +  xypi[1];
-				handleCompIn(cut_front);//front is EOF
+				encode2decode(cut_front);//front is EOF
 				
 				BigInteger EOF = xypi[0];
 				
 				
 				int flippy = 0;
 				if((xypi[0].compareTo(blockSize.add(BigInteger.valueOf(2))) == 0) || 
-						(xypi[0].compareTo(blockSize.add(BigInteger.valueOf(3))) == 0))//front B +2 || B + 3
+						(xypi[0].compareTo(blockSize.add(BigInteger.valueOf(3))) == 0))
+					//front B +2 || B + 3
 					flippy = flip_flag_late;
 				
 				
 				forward();
 				local[2] = BigInteger.ZERO;
 				local[3] = BigInteger.ZERO;
-				xypi = compOut(reg);
+				xypi = getOutput2(reg);
 				outputString = outputString + " " + xypi[0];
 
 			
@@ -610,7 +608,7 @@ public class comSole{
 					xypi[1] = BigInteger.ZERO;
 				}
 				
-				handleCompIn((even_flag| end_flag | flippy));	
+				encode2decode((even_flag| end_flag | flippy));	
 			}
 		}
 	}
@@ -637,11 +635,11 @@ public class comSole{
 			in = new FileInputStream(filename + "." +format);
 			fos = new FileOutputStream(filename + System.currentTimeMillis() / 1000L + "." + format);
 			out = new DataOutputStream(fos);
-			bin = get3Plus("");
+			bin = get4Blocks("");
 			while (bin.length() > 3 * b) {
 				buffer = bin.substring(0, 2 * b);
-				bufferComp();
-				bin = get3Plus(bin.substring(2 * b));
+				getOutput();
+				bin = get4Blocks(bin.substring(2 * b));
 			}
 			EOF(bin);
 		}
@@ -661,7 +659,7 @@ public class comSole{
 		else{
 			while (bin.length() > 3 * b) {
 				buffer = bin.substring(0, 2 * b);
-				bufferComp();
+				getOutput();
 				bin = bin.substring(2 * b);
 			}
 			EOF(bin);
@@ -729,12 +727,12 @@ public class comSole{
 			while(outputBuffer.length() >= 8) {
 				byteHolder = outputBuffer.substring(0, 8);
 				outputBuffer = outputBuffer.substring(8);
-				abyte = buildByte(byteHolder);
+				abyte = hash_formByte(byteHolder);
 				out.write(abyte);
 			}
 		}
 	}
-	private static byte buildByte(String bits) {
+	private static byte hash_formByte(String bits) {
 		byte abyte = 0;
 		if(bits.charAt(0) == '1') {
 			for(int i=1;i<8;i++) {
@@ -753,36 +751,30 @@ public class comSole{
 		}
 		return abyte;
 	}
-	private static void handleCompIn(int control) throws IOException{
-		if((control & head_mask) > 0){
-			sendResultToHash(xypi[0],head_mask);
-			sendResultToDecoder(xypi);
+	private static void encode2decode(int control) throws IOException {
+		if((control & head_mask) > 0) {
+			hash_send2Hash(xypi[0],head_mask);
+			send2Decoder(xypi);
 			
-			if(decoderBuffer[0] != null)
-			{
-				sendResultToHash(xypi[0], reg);
-				sendResultToHash(xypi[1], reg);
-				xypi = compIn(head_mask);
-				
+			if(decoderBuffer[0] != null) {
+				hash_send2Hash(xypi[0], reg);
+				hash_send2Hash(xypi[1], reg);
+				xypi = getInput(head_mask);
 				writeBack(reg);
 			}
 		}
 		else{
-			sendResultToDecoder(xypi);
-			sendResultToHash(xypi[0], reg);
-			
+			send2Decoder(xypi);
+			hash_send2Hash(xypi[0], reg);
 			if((control & cut_tail) > 0) {
-				xypi = compIn(reg);
-			
+				xypi = getInput(reg);
 				writeBack(control);
 			}
 			else {
-				sendResultToHash(xypi[1], reg);
-				xypi = compIn(reg);
-				
+				hash_send2Hash(xypi[1], reg);
+				xypi = getInput(reg);
 				writeBack(control);
 			}
-			
 		}
 	}
 	static String getHash() {
